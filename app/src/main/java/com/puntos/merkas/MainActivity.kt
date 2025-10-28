@@ -4,44 +4,60 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.puntos.merkas.components.bottomNavBar.HomeNavigation
+import com.puntos.merkas.components.transitions.composableWithTransitions
 import com.puntos.merkas.ui.theme.Merkas_kotlinTheme
-import com.puntos.merkas.WelcomeScreen
+import com.puntos.merkas.screens.auth.IntroScreen
+import com.puntos.merkas.screens.auth.login.LoginScreen
+import com.puntos.merkas.screens.auth.signup.SignUpScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Merkas_kotlinTheme {
-                AppNavigation()
-            }
+                MainNavigation()
         }
     }
 }
 
 @Composable
-fun AppNavigation() {
+fun MainNavigation() {
     val navController = rememberNavController()
 
     NavHost(
         navController = navController,
-        startDestination = "welcome"
+        startDestination = "intro"
     ) {
-        composable("welcome") {
-            WelcomeScreen(
+        composableWithTransitions("intro") {
+            IntroScreen(
                 onLoginClick = { navController.navigate("login") },
-                onRegisterClick = { navController.navigate("register") }
+                onRegisterClick = { navController.navigate("signup") }
             )
+        }
+        composableWithTransitions("login") {
+            LoginScreen(
+                navController = navController,
+                homeScreen = { navController.navigate("home") {
+                    popUpTo("intro") { inclusive = true }
+                } }
+            )
+        }
+        composableWithTransitions("signup") {
+            SignUpScreen(
+                navController = navController,
+                homeScreen = {
+                    navController.navigate("home") {
+                        popUpTo("intro") { inclusive = true }
+                    }
+                }
+            )
+        }
+        composableWithTransitions("home") {
+            HomeNavigation()
         }
     }
 }

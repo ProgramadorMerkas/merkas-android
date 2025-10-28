@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.puntos.merkas"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.puntos.merkas"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -59,7 +59,41 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+
+    // Animations nativas de Compose
+    implementation(libs.androidx.compose.animation.animation)
+
+    implementation(libs.androidx.room.external.antlr)
+    implementation(libs.androidx.browser)
+    implementation(libs.androidx.foundation.layout.android)
+    implementation(libs.androidx.foundation.layout.android)
+    implementation(libs.androidx.foundation.layout.android)
+
+    // Google Maps
+    implementation(libs.maps.compose) // Jetpack Compose Maps
+    implementation(libs.play.services.maps)
+
+    // MapLibre
+    implementation(libs.android.sdk)
+
+    // --- Retrofit & Gson ---
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+
+    // --- OkHttp (para peticiones HTTP y logs) ---
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
+
+    // --- Coroutines ---
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+
+    // --- Jetpack Compose ViewModel ---
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

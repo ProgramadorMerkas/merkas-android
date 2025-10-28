@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">merkas_kotlin</string>
+
+    <!-- INTROscreen -->
+    <string name="welcome_phrase">Merkas, Colombia\'s largest benefits platform, welcomes you!</string>
+    <!-- INTROscreen | LOGINscreen -->
+    <string name="login">Sign In</string>
+    <!-- INTROscreen | SIGNUPscreen -->
+    <string name="signup">Sign Up</string>
+
+    <!-- LOGINscreen -->
+    <string name="forgotPassword">Forgot password?</string>
+    <!-- LOGINscreen | SIGNUPscreen -->
+    <string name="email">Email</string>
+    <string name="emailExample">example</string>
+    <string name="password">Password</string>
+    <string name="requiredField">This field is required</string>
+    <string name="validEmail">Write a valid email</string>
+    <!-- SIGNUPscreen -->
+
+
+
+</resources>

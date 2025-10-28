@@ -1,3 +1,30 @@
+
 <resources>
-    <string name="app_name">merkas_kotlin</string>
+    <string name="app_name" translatable="false">merkas_kotlin</string>
+
+    <!-- INTROscreen -->
+    <string name="welcome_phrase">¡Merkas, la plataforma de beneficios más grande de Colombia te da la bienvenida!</string>
+    <!-- INTROscreen | LOGINscreen -->
+    <string name="login">Iniciar Sesión</string>
+    <!-- INTROscreen | SIGNUPscreen -->
+    <string name="signup">Registrarse</string>
+
+    <!-- LOGINscreen -->
+    <string name="forgotPassword">¿Olvidaste la contraseña?</string>
+    <!-- LOGINscreen | SIGNUPscreen -->
+    <string name="email">Email</string>
+    <string name="emailExample">ejemplo</string>
+    <string name="password">Contraseña</string>
+    <string name="requiredField">Este campo es obligatorio</string>
+    <string name="validEmail">Escribe un email válido</string>
+    <string name="validPassword"></string>
+    <!-- SIGNUPscreen -->
+    <string name="name">Nombre</string>
+    <string name="lastname">Apellidos</string>
+    <string name="prefix">Prefijo</string>
+    <string name="phoneNumber">Número de teléfono</string>
+    <string name="validPhoneNumber">Escriba un número de teléfono válido</string>
+
+    <string name="google_maps_key">T</string>
+
 </resources>
