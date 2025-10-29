@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puntos.merkas.R
@@ -57,7 +58,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen (
     homeScreen: () -> Unit,
     navController: NavController,
-    viewModel: AuthViewModel = viewModel()
+    viewModel: AuthViewModel = AuthViewModel()
 ) {
     // Estado del texto
     var emailError by remember { mutableStateOf(false) }
@@ -80,7 +81,7 @@ fun LoginScreen (
     val forceShowError = attemptedLogin
 
     val message by viewModel.message.collectAsState()
-    val loading by viewModel.loading.collectAsState()
+    val loading = false
 
     Column(
         modifier = Modifier
@@ -268,11 +269,12 @@ fun LoginScreen (
                          }*/
                     }
                 )
-
+/*
                     Box(Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(modifier = Modifier.size(28.dp), color = colorResource(R.color.merkas))
                 }
+ */
                     /* when (loginState) {
                         is LoginResult.Success -> {
                             LaunchedEffect(Unit) {
