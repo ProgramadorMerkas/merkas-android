@@ -2,32 +2,21 @@ package com.puntos.merkas.data.services
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.*
-import java.io.File
+import org.json.JSONObject
+import java.io.*
+import java.net.HttpURLConnection
+import java.net.URL
 
-// ---------------------------
-// BASE URL
-// ---------------------------
-private const val BASE_URL = "https://www.merkas.co/merkasbusiness/"
+const val baseURL = "https://www.merkas.co/merkasbusiness/"
 
-// ---------------------------
-// DATA MODELS LOGIN
-// ---------------------------
+// =============================
+// ==== LOGIN DATA STRUCTS ====
+// =============================
+
 data class LoginData(
     val correo: String,
     val contrasena: String,
     val token: String
-)
-
-data class LoginErrorResponse(
-    val mensaje: String
 )
 
 data class LoginResponse(
@@ -65,15 +54,19 @@ data class LoginResponse(
     val usuario_last_login: String?
 )
 
-// Resultado login
+data class LoginErrorResponse(
+    val mensaje: String
+)
+
 sealed class LoginResult {
     data class Success(val data: LoginResponse) : LoginResult()
     data class Failure(val message: String) : LoginResult()
 }
 
-// ---------------------------
-// DATA MODELS REGISTER
-// ---------------------------
+// ==============================
+// ==== REGISTER DATA STRUCTS ===
+// ==============================
+
 data class RegisterData(
     val nombre: String,
     val apellido: String,
@@ -96,95 +89,159 @@ sealed class RegisterResult {
     data class Failure(val message: String) : RegisterResult()
 }
 
-// ---------------------------
-// RETROFIT API
-// ---------------------------
-interface ApiSessionService {
+// =============================
+// ======== LOGIN SERVICE ======
+// =============================
 
-    @POST("function-api.php?title=usuarios")
-    suspend fun login(@Body data: LoginData): retrofit2.Response<LoginResponse>
+object LoginService {
 
-    @Multipart
-    @POST("function-api-registro.php")
-    suspend fun register(
-        @Query("title") title: String,
-        @Part("tipo") tipo: String,
-        @Part("usuario_id") usuarioId: String,
-        @Part("fileimagen") fileImagen: String,
-        @Part("usuario_social") usuarioSocial: String,
-        @Part("usuario_social_imagen") usuarioSocialImagen: String,
-        @Part("nombre") nombre: String,
-        @Part("apellido") apellido: String,
-        @Part("usuario_telefono") telefono: String,
-        @Part("usuario_correo") correo: String,
-        @Part("contrasena") contrasena: String,
-        @Part("token") token: String,
-        @Part("usuario_numero_documento") documento: String
-    ): retrofit2.Response<RegisterSuccessResponse>
-}
+    suspend fun login(data: LoginData): LoginResult = withContext(Dispatchers.IO) {
+        val url = URL("${baseURL}/function-api.php?title=usuarios")
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Content-Type", "application/json")
+            doOutput = true
+        }
 
-// ---------------------------
-// SERVICE SINGLETON
-// ---------------------------
-object SessionService {
-
-    private val api: ApiSessionService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(OkHttpClient.Builder().build())
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(ApiSessionService::class.java)
-    }
-
-    // LOGIN
-    suspend fun login(data: LoginData): LoginResult {
-        return withContext(Dispatchers.IO) {
-            val response = api.login(data)
-
-            val body = response.errorBody()?.string()
-            if (body != null && body.contains("mensaje")) {
-                return@withContext LoginResult.Failure(
-                    Regex("\"mensaje\":\"(.*?)\"").find(body)?.groupValues?.get(1) ?: "Error"
-                )
+        try {
+            val json = JSONObject().apply {
+                put("correo", data.correo)
+                put("contrasena", data.contrasena)
+                put("token", data.token)
             }
 
-            response.body()?.let {
-                return@withContext LoginResult.Success(it)
-            } ?: LoginResult.Failure("Error desconocido")
+            connection.outputStream.use { os ->
+                BufferedWriter(OutputStreamWriter(os, "UTF-8")).use { writer ->
+                    writer.write(json.toString())
+                    writer.flush()
+                }
+            }
+
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val response = stream.bufferedReader().use { it.readText() }
+
+            if (code !in 200..299) {
+                return@withContext LoginResult.Failure("HTTP Error $code")
+            }
+
+            val jsonResponse = JSONObject(response)
+            return@withContext if (jsonResponse.has("mensaje")) {
+                LoginResult.Failure(jsonResponse.getString("mensaje"))
+            } else {
+                val user = parseLoginResponse(jsonResponse)
+                LoginResult.Success(user)
+            }
+
+        } catch (e: Exception) {
+            LoginResult.Failure(e.message ?: "Unknown error")
+        } finally {
+            connection.disconnect()
         }
     }
 
-    // REGISTER
-    suspend fun register(data: RegisterData, title: String): RegisterResult {
-        return withContext(Dispatchers.IO) {
-
-            val response = api.register(
-                title = title,
-                tipo = "normal",
-                usuarioId = "",
-                fileImagen = "",
-                usuarioSocial = "",
-                usuarioSocialImagen = "",
-                nombre = data.nombre,
-                apellido = data.apellido,
-                telefono = data.telefono,
-                correo = data.correo,
-                contrasena = data.contrasena,
-                token = data.token,
-                documento = ""
-            )
-
-            val body = response.errorBody()?.string()
-            if (body != null && body.contains("mensaje")) {
-                return@withContext RegisterResult.Failure(
-                    Regex("\"mensaje\":\"(.*?)\"").find(body)?.groupValues?.get(1) ?: "Error"
-                )
-            }
-
-            response.body()?.let {
-                return@withContext RegisterResult.Success(it)
-            } ?: RegisterResult.Failure("Error desconocido")
-        }
+    private fun parseLoginResponse(obj: JSONObject): LoginResponse {
+        return LoginResponse(
+            usuario_id = obj.optString("usuario_id"),
+            usuario_codigo = obj.optString("usuario_codigo"),
+            usuario_nombre = obj.optString("usuario_nombre"),
+            usuario_apellido = obj.optString("usuario_apellido"),
+            usuario_nombre_completo = obj.optString("usuario_nombre_completo"),
+            usuario_correo = obj.optString("usuario_correo"),
+            usuario_telefono = obj.optString("usuario_telefono"),
+            usuario_whatssap = obj.optString("usuario_whatssap"),
+            usuario_numero_documento = obj.optString("usuario_numero_documento"),
+            usuario_tipo_documento = obj.optString("usuario_tipo_documento"),
+            usuario_genero = obj.optString("usuario_genero"),
+            usuario_direccion = obj.optString("usuario_direccion"),
+            usuario_rol_principal = obj.optString("usuario_rol_principal"),
+            usuario_status = obj.optString("usuario_status"),
+            usuario_estado = obj.optString("usuario_estado"),
+            usuario_fecha_registro = obj.optString("usuario_fecha_registro"),
+            usuario_merkash = obj.optString("usuario_merkash"),
+            usuario_puntos = obj.optString("usuario_puntos"),
+            usuario_id_padre = obj.optString("usuario_id_padre", null),
+            municipio_id = obj.optString("municipio_id", null),
+            usuario_ruta_img = obj.optString("usuario_ruta_img"),
+            imagen = obj.optString("imagen"),
+            usuario_latitud = obj.optString("usuario_latitud", null),
+            usuario_longitud = obj.optString("usuario_longitud", null),
+            usuario_bienvenida = obj.optString("usuario_bienvenida", null),
+            usuario_contrasena = obj.optString("usuario_contrasena", null),
+            usuario_token_contrasena = obj.optString("usuario_token_contrasena", null),
+            usuario_token_fecha = obj.optString("usuario_token_fecha", null),
+            usuario_token_merkash = obj.optString("usuario_token_merkash", null),
+            usuario_token_merkash_fecha = obj.optString("usuario_token_merkash_fecha", null),
+            usuario_terminos = obj.optString("usuario_terminos", null),
+            usuario_last_login = obj.optString("usuario_last_login", null)
+        )
     }
 }
+
+// =============================
+// ===== REGISTER SERVICE ======
+// =============================
+
+object RegisterService {
+
+    suspend fun register(data: RegisterData, title: String): RegisterResult = withContext(Dispatchers.IO) {
+        val url = URL("${baseURL}/function-api-registro.php?title=$title")
+        val boundary = "Boundary-${System.currentTimeMillis()}"
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            setRequestProperty("Authorization", "Bearer access-token")
+            doOutput = true
+        }
+
+        try {
+            val body = buildString {
+                appendFormField("tipo", "normal", boundary)
+                appendFormField("usuario_id", "", boundary)
+                appendFormField("fileimagen", "", boundary)
+                appendFormField("usuario_social", "", boundary)
+                appendFormField("usuario_social_imagen", "", boundary)
+                appendFormField("nombre", data.nombre, boundary)
+                appendFormField("apellido", data.apellido, boundary)
+                appendFormField("usuario_telefono", data.telefono, boundary)
+                appendFormField("usuario_correo", data.correo, boundary)
+                appendFormField("contrasena", data.contrasena, boundary)
+                appendFormField("token", data.token, boundary)
+                appendFormField("usuario_numero_documento", "", boundary)
+                append("--$boundary--\r\n")
+            }
+
+            connection.outputStream.use { os ->
+                os.write(body.toByteArray(Charsets.UTF_8))
+            }
+
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val response = stream.bufferedReader().use { it.readText() }
+
+            if (code !in 200..299) {
+                return@withContext RegisterResult.Failure("HTTP Error $code")
+            }
+
+            val jsonResponse = JSONObject(response)
+            return@withContext if (jsonResponse.has("mensaje")) {
+                RegisterResult.Failure(jsonResponse.getString("mensaje"))
+            } else {
+                val success = RegisterSuccessResponse(jsonResponse.getString("validacion"))
+                RegisterResult.Success(success)
+            }
+
+        } catch (e: Exception) {
+            RegisterResult.Failure(e.message ?: "Unknown error")
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun StringBuilder.appendFormField(name: String, value: String, boundary: String) {
+        append("--$boundary\r\n")
+        append("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
+        append("$value\r\n")
+    }
+}
+
