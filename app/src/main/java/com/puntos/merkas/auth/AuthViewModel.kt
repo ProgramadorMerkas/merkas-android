@@ -5,9 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.puntos.merkas.data.services.LoginData
 import com.puntos.merkas.data.services.LoginResult
+import com.puntos.merkas.data.services.LoginService
 import com.puntos.merkas.data.services.RegisterData
 import com.puntos.merkas.data.services.RegisterResult
-import com.puntos.merkas.data.services.SessionService
+import com.puntos.merkas.data.services.RegisterService
 import com.puntos.merkas.services.TokenService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +32,7 @@ class AuthViewModel : ViewModel() {
 
             // 1. Obtener token dinámico
             val token = TokenService.obtenerToken()
+
             if (token == null) {
                 _message.value = "Error obteniendo token"
                 _loading.value = false
@@ -39,12 +41,15 @@ class AuthViewModel : ViewModel() {
             Log.d("LOGIN_TOKEN", token)
 
             // 2. Enviar login al backend
-            when (val result = SessionService.login(LoginData(correo, contrasena, token))) {
+            val result = LoginService.login(LoginData(correo = correo, contrasena = contrasena, token = token))
+
+            when(result) {
                 is LoginResult.Success -> {
-                    _message.value = "Bienvenido ${result.data.usuario_nombre}"
+                    val user = result.data
+                    println("✅ Login correcto: ${user.usuario_nombre_completo}")
                 }
                 is LoginResult.Failure -> {
-                    _message.value = result.message
+                    println("❌ Error de login: ${result.message}")
                 }
             }
 
@@ -68,14 +73,15 @@ class AuthViewModel : ViewModel() {
             Log.d("SIGNUP_TOKEN", token)
 
 
-            val data = RegisterData(nombre, apellido, telefono, correo, contrasena, token)
+            val result = RegisterService.register(data = RegisterData(nombre = nombre, apellido = apellido,
+                telefono = telefono, correo = correo, contrasena = contrasena, token = token), title = "usuarios")
 
-            when (val result = SessionService.register(data, title = "usuarios")) {
+            when (result) {
                 is RegisterResult.Success -> {
-                    _message.value = "Registro exitoso ✅"
+                    println("✅ Registro exitoso: ${result.data.validacion}")
                 }
                 is RegisterResult.Failure -> {
-                    _message.value = result.message
+                    println("❌ Error de registro: ${result.message}")
                 }
             }
 

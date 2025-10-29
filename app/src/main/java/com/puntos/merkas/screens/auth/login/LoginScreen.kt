@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puntos.merkas.R
@@ -57,7 +58,7 @@ import kotlinx.coroutines.launch
 fun LoginScreen (
     homeScreen: () -> Unit,
     navController: NavController,
-    viewModel: AuthViewModel = viewModel()
+    viewModel: AuthViewModel = AuthViewModel()
 ) {
     // Estado del texto
     var emailError by remember { mutableStateOf(false) }
@@ -80,17 +81,7 @@ fun LoginScreen (
     val forceShowError = attemptedLogin
 
     val message by viewModel.message.collectAsState()
-    val loading by viewModel.loading.collectAsState()
-
-    val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) {
-            navController.navigate("home") {
-                popUpTo("login") { inclusive = true } // Evita volver a login
-            }
-        }
-    }
+    val loading = false
 
     Column(
         modifier = Modifier
@@ -208,7 +199,6 @@ fun LoginScreen (
             ButtonAuth(
                 text = stringResource(R.string.login),
                 style = ButtonAuthStyle.Login,
-                enabled = !uiState.loading,
                 onClick = {
                     Log.d("Login", "Botón Iniciar presionado")
                     // Validación manual antes de enviar
@@ -241,19 +231,57 @@ fun LoginScreen (
 
                     // ✅ AQUÍ sí llamamos al ViewModel **solamente una vez**
                     viewModel.login(correo, contrasena)
+
+                    /* if (validEmail) {
+                             Log.d("Login", "Datos válidos, ejecutando loginViewModel.login()")
+                             viewModel.login(email, password)
+                         } else {
+                             Log.d("Login", "Errores detectados")
+                         }
+
+                          var valid = true
+
+                         if (email.isBlank()) {
+                             emailError = true
+                             emailErrorType = ErrorType.REQUIRED
+                             valid = false
+                         } else if (!email.matches(
+                                 Regex(
+                                     "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
+                                 )
+                             )
+                         ) {
+                             emailError = true
+                             emailErrorType = ErrorType.INVALID_FORMAT
+                             valid = false
+                         }
+
+                         if (password.isBlank()) {
+                             passwordError = true
+                             passwordErrorType = ErrorType.REQUIRED
+                             valid = false
+                         } else if (!password.matches(
+                                 Regex(
+                                     "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$"
+                                 )
+                             )
+                         ) {
+                             passwordError = true
+                             passwordErrorType = ErrorType.INVALID_FORMAT
+                             valid = false
+                         }
+
+                         if (valid) {
+                             viewModel.login(email, password)
+                         }*/
                 }
             )
-            if (uiState.loading) {
-                Box(
-                    Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
-                        color = colorResource(R.color.merkas)
-                    )
-                }
-            }
         }
     }
 }
+/*
+                    Box(Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp), color = colorResource(R.color.merkas))
+                }
+ */
