@@ -82,6 +82,16 @@ fun LoginScreen (
     val message by viewModel.message.collectAsState()
     val loading by viewModel.loading.collectAsState()
 
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) {
+            navController.navigate("home") {
+                popUpTo("login") { inclusive = true } // Evita volver a login
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -111,185 +121,139 @@ fun LoginScreen (
             )
         }
 
-            Column(
-                Modifier.fillMaxSize()
-            ) {
-                // CAMPO EMAIL
-                TextField(
-                    label = stringResource(id = R.string.email),
-                    value = correo,
-                    onValueChange = {
-                        correo = it
-                        emailError = false
-                        emailErrorType = ErrorType.NONE
-                    },
-                    isError = emailError,
-                    errorType = emailErrorType,
-                    onFocusLost = {
-                        when {
-                            correo.isBlank() -> {
-                                emailError = true
-                                emailErrorType = ErrorType.REQUIRED
-                            }
-                            !correo.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
-                                emailError = true
-                                emailErrorType = ErrorType.INVALID_FORMAT
-                            }
+        Column(
+            Modifier.fillMaxSize()
+        ) {
+            // CAMPO EMAIL
+            TextField(
+                label = stringResource(id = R.string.email),
+                value = correo,
+                onValueChange = {
+                    correo = it
+                    emailError = false
+                    emailErrorType = ErrorType.NONE
+                },
+                isError = emailError,
+                errorType = emailErrorType,
+                onFocusLost = {
+                    when {
+                        correo.isBlank() -> {
+                            emailError = true
+                            emailErrorType = ErrorType.REQUIRED
                         }
-                    },
-                    placeholder = stringResource(id = R.string.emailExample) + "@correo.com",
-                    forceShowError = forceShowError // MOSTRAR ERROR SI NO SE HA EJECUTADO HASBEENFOCUSED ANTERIORMENTE
-                )
 
-                // CAMPO CONTRASEÑA
-                TextField(
-                    label = stringResource(id = R.string.password),
-                    imeAction = ImeAction.Done,
-                    value = contrasena,
-                    onValueChange = {
-                        contrasena = it
-                        passwordError = false
-                        passwordErrorType = ErrorType.NONE
-                    },
-                    isError = passwordError,
-                    errorType = passwordErrorType,
-                    onFocusLost = {
-                        when {
-                            contrasena.isBlank() -> {
-                                passwordError = true
-                                passwordErrorType = ErrorType.REQUIRED
-                            }
-                            !contrasena.matches(
-                                Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$")
-                            ) -> {
-                                passwordError = true
-                                passwordErrorType = ErrorType.INVALID_FORMAT
-                            }
-                        }
-                    },
-                    placeholder = "",
-                    isPassword = true,
-                    forceShowError = forceShowError // MOSTRAR ERROR SI NO SE HA EJECUTADO HASBEENFOCUSED ANTERIORMENTE
-                )
-
-                // LINK OLVIDÉ MI CONTRASEÑA
-                TextButton(
-                    onClick = {
-                        val customTabsIntent = CustomTabsIntent.Builder()
-                            .setShowTitle(true)
-                            .build()
-                        customTabsIntent.launchUrl(context, Uri.parse(resetPasswordUrl))
-                    }
-                ) {
-                    Text(
-                        stringResource(id = R.string.forgotPassword),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        textDecoration = TextDecoration.Underline,
-                        color = colorResource(id = R.color.merkas),
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // BOTÓN LOGIN
-                ButtonAuth(
-                    text = stringResource(R.string.login),
-                    style = ButtonAuthStyle.Login,
-                    onClick = {
-                        Log.d("Login", "Botón Iniciar presionado")
-                        // Validación manual antes de enviar
-                        attemptedLogin = true
-
-                        val validEmail = correo.matches(Regex(
-                            "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"))
-
-                        if (!validEmail) {
+                        !correo.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
                             emailError = true
                             emailErrorType = ErrorType.INVALID_FORMAT
                         }
-
-
-                        val passwordValid = contrasena.isNotBlank()
-
-                        // Si hay errores, los marcamos
-                        emailError = !validEmail
-                        passwordError = !passwordValid
-                        emailErrorType = if (!validEmail) ErrorType.INVALID_FORMAT else ErrorType.NONE
-                        passwordErrorType = if (!passwordValid) ErrorType.REQUIRED else ErrorType.NONE
-
-                        // Si algo es inválido, salimos
-                        if (!validEmail || !passwordValid) return@ButtonAuth
-
-                        // ✅ AQUÍ sí llamamos al ViewModel **solamente una vez**
-                        viewModel.login(correo, contrasena)
-
-                        /* if (validEmail) {
-                             Log.d("Login", "Datos válidos, ejecutando loginViewModel.login()")
-                             viewModel.login(email, password)
-                         } else {
-                             Log.d("Login", "Errores detectados")
-                         }
-
-                          var valid = true
-
-                         if (email.isBlank()) {
-                             emailError = true
-                             emailErrorType = ErrorType.REQUIRED
-                             valid = false
-                         } else if (!email.matches(
-                                 Regex(
-                                     "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
-                                 )
-                             )
-                         ) {
-                             emailError = true
-                             emailErrorType = ErrorType.INVALID_FORMAT
-                             valid = false
-                         }
-
-                         if (password.isBlank()) {
-                             passwordError = true
-                             passwordErrorType = ErrorType.REQUIRED
-                             valid = false
-                         } else if (!password.matches(
-                                 Regex(
-                                     "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$"
-                                 )
-                             )
-                         ) {
-                             passwordError = true
-                             passwordErrorType = ErrorType.INVALID_FORMAT
-                             valid = false
-                         }
-
-                         if (valid) {
-                             viewModel.login(email, password)
-                         }*/
                     }
-                )
+                },
+                placeholder = stringResource(id = R.string.emailExample) + "@correo.com",
+                forceShowError = forceShowError // MOSTRAR ERROR SI NO SE HA EJECUTADO HASBEENFOCUSED ANTERIORMENTE
+            )
 
-                    Box(Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(28.dp), color = colorResource(R.color.merkas))
+            // CAMPO CONTRASEÑA
+            TextField(
+                label = stringResource(id = R.string.password),
+                imeAction = ImeAction.Done,
+                value = contrasena,
+                onValueChange = {
+                    contrasena = it
+                    passwordError = false
+                    passwordErrorType = ErrorType.NONE
+                },
+                isError = passwordError,
+                errorType = passwordErrorType,
+                onFocusLost = {
+                    when {
+                        contrasena.isBlank() -> {
+                            passwordError = true
+                            passwordErrorType = ErrorType.REQUIRED
+                        }
+
+                        !contrasena.matches(
+                            Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$")
+                        ) -> {
+                            passwordError = true
+                            passwordErrorType = ErrorType.INVALID_FORMAT
+                        }
+                    }
+                },
+                placeholder = "",
+                isPassword = true,
+                forceShowError = forceShowError // MOSTRAR ERROR SI NO SE HA EJECUTADO HASBEENFOCUSED ANTERIORMENTE
+            )
+
+            // LINK OLVIDÉ MI CONTRASEÑA
+            TextButton(
+                onClick = {
+                    val customTabsIntent = CustomTabsIntent.Builder()
+                        .setShowTitle(true)
+                        .build()
+                    customTabsIntent.launchUrl(context, Uri.parse(resetPasswordUrl))
                 }
-                    /* when (loginState) {
-                        is LoginResult.Success -> {
-                            LaunchedEffect(Unit) {
-                                homeScreen()
-                                viewModel.resetState()
-                            }
-                        }
-                        is LoginResult.Failure -> {
-                            val message = (loginState as LoginResult.Failure).message
-                            Text(
-                                message,
-                                color = colorResource(R.color.merkas),
-                                modifier = Modifier.padding(top = 16.dp)
-                            )
-                        }
-                        null -> {}
-                    } */
+            ) {
+                Text(
+                    stringResource(id = R.string.forgotPassword),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline,
+                    color = colorResource(id = R.color.merkas),
+                )
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // BOTÓN LOGIN
+            ButtonAuth(
+                text = stringResource(R.string.login),
+                style = ButtonAuthStyle.Login,
+                enabled = !uiState.loading,
+                onClick = {
+                    Log.d("Login", "Botón Iniciar presionado")
+                    // Validación manual antes de enviar
+                    attemptedLogin = true
+
+                    val validEmail = correo.matches(
+                        Regex(
+                            "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
+                        )
+                    )
+
+                    if (!validEmail) {
+                        emailError = true
+                        emailErrorType = ErrorType.INVALID_FORMAT
+                    }
+
+
+                    val passwordValid = contrasena.isNotBlank()
+
+                    // Si hay errores, los marcamos
+                    emailError = !validEmail
+                    passwordError = !passwordValid
+                    emailErrorType =
+                        if (!validEmail) ErrorType.INVALID_FORMAT else ErrorType.NONE
+                    passwordErrorType =
+                        if (!passwordValid) ErrorType.REQUIRED else ErrorType.NONE
+
+                    // Si algo es inválido, salimos
+                    if (!validEmail || !passwordValid) return@ButtonAuth
+
+                    // ✅ AQUÍ sí llamamos al ViewModel **solamente una vez**
+                    viewModel.login(correo, contrasena)
+                }
+            )
+            if (uiState.loading) {
+                Box(
+                    Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = colorResource(R.color.merkas)
+                    )
+                }
+            }
+        }
     }
 }

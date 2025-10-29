@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +82,17 @@ fun SignUpScreen (
 
     val message by viewModel.message.collectAsState()
     val loading by viewModel.loading.collectAsState()
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    // 👇 Si el registro fue exitoso → navegar
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) {
+            navController.navigate("home") {
+                popUpTo("signup") { inclusive = true } // Borra pantalla signup del backstack
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
