@@ -1,170 +1,79 @@
 package com.puntos.merkas.data.services
 
-import com.google.gson.annotations.SerializedName
-import com.puntos.merkas.data.services.Environment.BASE_URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.RequestBody
-import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.POST
-import retrofit2.http.Multipart
+import retrofit2.http.*
+import java.io.File
 
-// Login/Register data models
+// ---------------------------
+// BASE URL
+// ---------------------------
+private const val BASE_URL = "https://www.merkas.co/merkasbusiness/"
 
+// ---------------------------
+// DATA MODELS LOGIN
+// ---------------------------
 data class LoginData(
     val correo: String,
     val contrasena: String,
     val token: String
 )
 
-data class LoginErrorResponse(val mensaje: String)
+data class LoginErrorResponse(
+    val mensaje: String
+)
 
+data class LoginResponse(
+    val usuario_id: String,
+    val usuario_codigo: String,
+    val usuario_nombre: String,
+    val usuario_apellido: String,
+    val usuario_nombre_completo: String,
+    val usuario_correo: String,
+    val usuario_telefono: String,
+    val usuario_whatssap: String,
+    val usuario_numero_documento: String,
+    val usuario_tipo_documento: String,
+    val usuario_genero: String,
+    val usuario_direccion: String,
+    val usuario_rol_principal: String,
+    val usuario_status: String,
+    val usuario_estado: String,
+    val usuario_fecha_registro: String,
+    val usuario_merkash: String,
+    val usuario_puntos: String,
+    val usuario_id_padre: String?,
+    val municipio_id: String?,
+    val usuario_ruta_img: String,
+    val imagen: String,
+    val usuario_latitud: String?,
+    val usuario_longitud: String?,
+    val usuario_bienvenida: String?,
+    val usuario_contrasena: String?,
+    val usuario_token_contrasena: String?,
+    val usuario_token_fecha: String?,
+    val usuario_token_merkash: String?,
+    val usuario_token_merkash_fecha: String?,
+    val usuario_terminos: String?,
+    val usuario_last_login: String?
+)
+
+// Resultado login
 sealed class LoginResult {
-    data class Success(val response: LoginResponse) : LoginResult()
+    data class Success(val data: LoginResponse) : LoginResult()
     data class Failure(val message: String) : LoginResult()
 }
 
-data class LoginResponse(
-    @SerializedName("usuario_id") val usuarioId: String,
-    @SerializedName("usuario_codigo") val usuarioCodigo: String,
-    @SerializedName("usuario_nombre") val usuarioNombre: String,
-    @SerializedName("usuario_apellido") val usuarioApellido: String,
-    @SerializedName("usuario_nombre_completo") val usuarioNombreCompleto: String,
-    @SerializedName("usuario_correo") val usuarioCorreo: String,
-    @SerializedName("usuario_telefono") val usuarioTelefono: String,
-    @SerializedName("usuario_whatssap") val usuarioWhatssap: String,
-    @SerializedName("usuario_numero_documento") val usuarioNumeroDocumento: String,
-    @SerializedName("usuario_tipo_documento") val usuarioTipoDocumento: String,
-    @SerializedName("usuario_genero") val usuarioGenero: String,
-    @SerializedName("usuario_direccion") val usuarioDireccion: String,
-    @SerializedName("usuario_rol_principal") val usuarioRolPrincipal: String,
-    @SerializedName("usuario_status") val usuarioStatus: String,
-    @SerializedName("usuario_estado") val usuarioEstado: String,
-    @SerializedName("usuario_fecha_registro") val usuarioFechaRegistro: String,
-    @SerializedName("usuario_merkash") val usuarioMerkash: String,
-    @SerializedName("usuario_puntos") val usuarioPuntos: String,
-    @SerializedName("usuario_id_padre") val usuarioIdPadre: String?,
-    @SerializedName("municipio_id") val municipioId: String?,
-    @SerializedName("usuario_ruta_img") val usuarioRutaImg: String,
-    val imagen: String,
-    @SerializedName("usuario_latitud") val usuarioLatitud: String?,
-    @SerializedName("usuario_longitud") val usuarioLongitud: String?,
-    @SerializedName("usuario_bienvenida") val usuarioBienvenida: String?,
-    @SerializedName("usuario_contrasena") val usuarioContrasena: String?,
-    @SerializedName("usuario_token_contrasena") val usuarioTokenContrasena: String?,
-    @SerializedName("usuario_token_fecha") val usuarioTokenFecha: String?,
-    @SerializedName("usuario_token_merkash") val usuarioTokenMerkash: String?,
-    @SerializedName("usuario_token_merkash_fecha") val usuarioTokenMerkashFecha: String?,
-    @SerializedName("usuario_terminos") val usuarioTerminos: String?,
-    @SerializedName("usuario_last_login") val usuarioLastLogin: String?
-)
-
-// Retrofit API for login
-private interface LoginApi {
-    @POST("function-api.php?title=usuarios")
-    suspend fun login(@Body data: LoginData): LoginResponse
-}
-
-// Retrofit API for register (multipart)
-private interface RegisterApi {
-    @Multipart
-    @POST("function-api-registro.php")
-    suspend fun register(
-        @retrofit2.http.Part("tipo") tipo: RequestBody,
-        @retrofit2.http.Part("usuario_id") usuarioId: RequestBody,
-        @retrofit2.http.Part("fileimagen") fileimagen: RequestBody,
-        @retrofit2.http.Part("usuario_social") usuarioSocial: RequestBody,
-        @retrofit2.http.Part("usuario_social_imagen") usuarioSocialImagen: RequestBody,
-        @retrofit2.http.Part("nombre") nombre: RequestBody,
-        @retrofit2.http.Part("apellido") apellido: RequestBody,
-        @retrofit2.http.Part("usuario_telefono") usuarioTelefono: RequestBody,
-        @retrofit2.http.Part("usuario_correo") usuarioCorreo: RequestBody,
-        @retrofit2.http.Part("contrasena") contrasena: RequestBody,
-        @retrofit2.http.Part("token") token: RequestBody,
-        @retrofit2.http.Part("usuario_numero_documento") usuarioNumeroDocumento: RequestBody
-    ): RegisterSuccessResponse
-}
-
-data class RegisterSuccessResponse(val validacion: String)
-data class RegisterErrorResponse(val mensaje: String)
-
-sealed class RegisterResult {
-    data class Success(val response: RegisterSuccessResponse) : RegisterResult()
-    data class Failure(val message: String) : RegisterResult()
-}
-
-object LoginService {
-    private val client = OkHttpClient.Builder().build()
-
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
-        .client(client)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-
-    private val api = retrofit.create(LoginApi::class.java)
-    private val registerApi = retrofit.create(RegisterApi::class.java)
-
-    suspend fun login(data: LoginData): LoginResult = withContext(Dispatchers.IO) {
-        try {
-            val response = api.login(data)
-            LoginResult.Success(response)
-        } catch (e: HttpException) {
-            // Intentar decodificar mensaje de error no es directo aquí sin body parsing
-            LoginResult.Failure("HTTP Error: ${e.code()}")
-        } catch (e: Exception) {
-            LoginResult.Failure("Error login: ${e.localizedMessage ?: "unknown"}")
-        }
-    }
-
-    // register similar a Swift: usamos multipart, retornamos RegisterResult
-    suspend fun register(data: RegisterData, title: String): RegisterResult = withContext(Dispatchers.IO) {
-        try {
-            // Construir RequestBody para cada campo (texto plano)
-            fun rb(value: String) = value.toRequestBody("text/plain".toMediaTypeOrNull())
-            val tipo = rb("normal")
-            val usuarioId = rb("") // tal como en Swift
-            val fileImagen = rb("")
-            val usuarioSocial = rb("")
-            val usuarioSocialImagen = rb("")
-            val nombre = rb(data.nombre)
-            val apellido = rb(data.apellido)
-            val telefono = rb(data.telefono)
-            val correo = rb(data.correo)
-            val contrasena = rb(data.contrasena)
-            val token = rb(data.token)
-            val usuarioNumeroDocumento = rb("")
-
-            val response = registerApi.register(
-                tipo,
-                usuarioId,
-                fileImagen,
-                usuarioSocial,
-                usuarioSocialImagen,
-                nombre,
-                apellido,
-                telefono,
-                correo,
-                contrasena,
-                token,
-                usuarioNumeroDocumento
-            )
-            RegisterResult.Success(response)
-        } catch (e: HttpException) {
-            RegisterResult.Failure("HTTP Error: ${e.code()}")
-        } catch (e: Exception) {
-            RegisterResult.Failure("Error registro: ${e.localizedMessage ?: "unknown"}")
-        }
-    }
-}
-
-// RegisterData matching Swift's struct
+// ---------------------------
+// DATA MODELS REGISTER
+// ---------------------------
 data class RegisterData(
     val nombre: String,
     val apellido: String,
@@ -173,3 +82,109 @@ data class RegisterData(
     val contrasena: String,
     val token: String
 )
+
+data class RegisterSuccessResponse(
+    val validacion: String
+)
+
+data class RegisterErrorResponse(
+    val mensaje: String
+)
+
+sealed class RegisterResult {
+    data class Success(val data: RegisterSuccessResponse) : RegisterResult()
+    data class Failure(val message: String) : RegisterResult()
+}
+
+// ---------------------------
+// RETROFIT API
+// ---------------------------
+interface ApiSessionService {
+
+    @POST("function-api.php?title=usuarios")
+    suspend fun login(@Body data: LoginData): retrofit2.Response<LoginResponse>
+
+    @Multipart
+    @POST("function-api-registro.php")
+    suspend fun register(
+        @Query("title") title: String,
+        @Part("tipo") tipo: String,
+        @Part("usuario_id") usuarioId: String,
+        @Part("fileimagen") fileImagen: String,
+        @Part("usuario_social") usuarioSocial: String,
+        @Part("usuario_social_imagen") usuarioSocialImagen: String,
+        @Part("nombre") nombre: String,
+        @Part("apellido") apellido: String,
+        @Part("usuario_telefono") telefono: String,
+        @Part("usuario_correo") correo: String,
+        @Part("contrasena") contrasena: String,
+        @Part("token") token: String,
+        @Part("usuario_numero_documento") documento: String
+    ): retrofit2.Response<RegisterSuccessResponse>
+}
+
+// ---------------------------
+// SERVICE SINGLETON
+// ---------------------------
+object SessionService {
+
+    private val api: ApiSessionService by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(OkHttpClient.Builder().build())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ApiSessionService::class.java)
+    }
+
+    // LOGIN
+    suspend fun login(data: LoginData): LoginResult {
+        return withContext(Dispatchers.IO) {
+            val response = api.login(data)
+
+            val body = response.errorBody()?.string()
+            if (body != null && body.contains("mensaje")) {
+                return@withContext LoginResult.Failure(
+                    Regex("\"mensaje\":\"(.*?)\"").find(body)?.groupValues?.get(1) ?: "Error"
+                )
+            }
+
+            response.body()?.let {
+                return@withContext LoginResult.Success(it)
+            } ?: LoginResult.Failure("Error desconocido")
+        }
+    }
+
+    // REGISTER
+    suspend fun register(data: RegisterData, title: String): RegisterResult {
+        return withContext(Dispatchers.IO) {
+
+            val response = api.register(
+                title = title,
+                tipo = "normal",
+                usuarioId = "",
+                fileImagen = "",
+                usuarioSocial = "",
+                usuarioSocialImagen = "",
+                nombre = data.nombre,
+                apellido = data.apellido,
+                telefono = data.telefono,
+                correo = data.correo,
+                contrasena = data.contrasena,
+                token = data.token,
+                documento = ""
+            )
+
+            val body = response.errorBody()?.string()
+            if (body != null && body.contains("mensaje")) {
+                return@withContext RegisterResult.Failure(
+                    Regex("\"mensaje\":\"(.*?)\"").find(body)?.groupValues?.get(1) ?: "Error"
+                )
+            }
+
+            response.body()?.let {
+                return@withContext RegisterResult.Success(it)
+            } ?: RegisterResult.Failure("Error desconocido")
+        }
+    }
+}

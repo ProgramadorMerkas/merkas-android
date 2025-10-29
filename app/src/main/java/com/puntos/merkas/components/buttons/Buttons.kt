@@ -35,8 +35,9 @@ enum class ButtonAuthStyle {
 fun ButtonAuth(
     text: String,
     onClick: () -> Unit,
-    style: ButtonAuthStyle = ButtonAuthStyle.Login // Valor por defecto
-) {
+    style: ButtonAuthStyle = ButtonAuthStyle.Login, // Valor por defecto
+    enabled:Boolean = true
+    ) {
     val (containerColor, contentColor) = when (style) {
         ButtonAuthStyle.Login -> Triple(
             colorResource(id = R.color.merkas),

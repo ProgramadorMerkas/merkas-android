@@ -43,29 +43,31 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puntos.merkas.R
+import com.puntos.merkas.auth.AuthViewModel
 import com.puntos.merkas.components.buttons.BackButton
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
 import com.puntos.merkas.components.inputs.ErrorType
 import com.puntos.merkas.components.inputs.TextField
-import com.puntos.merkas.data.network.LoginResult
-import com.puntos.merkas.data.services.TokenService
+import com.puntos.merkas.data.services.LoginResult
+import com.puntos.merkas.services.TokenService
 import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen (
     homeScreen: () -> Unit,
-    navController: NavController
-)
-{
+    navController: NavController,
+    viewModel: AuthViewModel = viewModel()
+) {
     // Estado del texto
-    var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf(false) }
     var emailErrorType by remember { mutableStateOf(ErrorType.NONE) }
 
-    var password by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf(false) }
     var passwordErrorType by remember { mutableStateOf(ErrorType.NONE) }
+
+    var correo by remember { mutableStateOf("") }
+    var contrasena by remember { mutableStateOf("") }
 
     var attemptedLogin by remember { mutableStateOf(false) }
 
@@ -77,22 +79,8 @@ fun LoginScreen (
     val resetPasswordUrl = "https://app.merkas.co/#/reset-password"
     val forceShowError = attemptedLogin
 
-    val viewModel: LoginViewModel = viewModel()
-    val loginState by viewModel.loginState.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-
-    LaunchedEffect(loginState) {
-        when (val state = loginState) {
-            is LoginResult.Success -> {
-                homeScreen()
-                viewModel.resetState()
-            }
-            is LoginResult.Failure -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-            }
-            null -> {}
-        }
-    }
+    val message by viewModel.message.collectAsState()
+    val loading by viewModel.loading.collectAsState()
 
     Column(
         modifier = Modifier
@@ -129,9 +117,9 @@ fun LoginScreen (
                 // CAMPO EMAIL
                 TextField(
                     label = stringResource(id = R.string.email),
-                    value = email,
+                    value = correo,
                     onValueChange = {
-                        email = it
+                        correo = it
                         emailError = false
                         emailErrorType = ErrorType.NONE
                     },
@@ -139,11 +127,11 @@ fun LoginScreen (
                     errorType = emailErrorType,
                     onFocusLost = {
                         when {
-                            email.isBlank() -> {
+                            correo.isBlank() -> {
                                 emailError = true
                                 emailErrorType = ErrorType.REQUIRED
                             }
-                            !email.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
+                            !correo.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
                                 emailError = true
                                 emailErrorType = ErrorType.INVALID_FORMAT
                             }
@@ -157,9 +145,9 @@ fun LoginScreen (
                 TextField(
                     label = stringResource(id = R.string.password),
                     imeAction = ImeAction.Done,
-                    value = password,
+                    value = contrasena,
                     onValueChange = {
-                        password = it
+                        contrasena = it
                         passwordError = false
                         passwordErrorType = ErrorType.NONE
                     },
@@ -167,11 +155,11 @@ fun LoginScreen (
                     errorType = passwordErrorType,
                     onFocusLost = {
                         when {
-                            password.isBlank() -> {
+                            contrasena.isBlank() -> {
                                 passwordError = true
                                 passwordErrorType = ErrorType.REQUIRED
                             }
-                            !password.matches(
+                            !contrasena.matches(
                                 Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$")
                             ) -> {
                                 passwordError = true
@@ -206,15 +194,14 @@ fun LoginScreen (
 
                 // BOTÓN LOGIN
                 ButtonAuth(
-
-                    text = if (isLoading) "" else stringResource(R.string.login),
+                    text = stringResource(R.string.login),
                     style = ButtonAuthStyle.Login,
                     onClick = {
                         Log.d("Login", "Botón Iniciar presionado")
                         // Validación manual antes de enviar
                         attemptedLogin = true
 
-                        val validEmail = email.matches(Regex(
+                        val validEmail = correo.matches(Regex(
                             "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"))
 
                         if (!validEmail) {
@@ -223,27 +210,19 @@ fun LoginScreen (
                         }
 
 
-                        val passwordValid = password.isNotBlank()
+                        val passwordValid = contrasena.isNotBlank()
 
-                        if (!passwordValid) {
-                            passwordError = true
-                            passwordErrorType = ErrorType.REQUIRED
-                        }
+                        // Si hay errores, los marcamos
+                        emailError = !validEmail
+                        passwordError = !passwordValid
+                        emailErrorType = if (!validEmail) ErrorType.INVALID_FORMAT else ErrorType.NONE
+                        passwordErrorType = if (!passwordValid) ErrorType.REQUIRED else ErrorType.NONE
 
+                        // Si algo es inválido, salimos
                         if (!validEmail || !passwordValid) return@ButtonAuth
 
-                        coroutineScope.launch {
-                            val token = TokenService.obtenerToken()
-                            if (token == null) {
-                                Toast.makeText(context, "Error obteniendo token", Toast.LENGTH_SHORT).show()
-                                return@launch
-                            }
-
-                            Log.d("Login", "Token obtenido: $token")
-                            Log.d("Login", "Ejecutando viewModel.login()")
-
-                            viewModel.login(email, password, token)
-                        }
+                        // ✅ AQUÍ sí llamamos al ViewModel **solamente una vez**
+                        viewModel.login(correo, contrasena)
 
                         /* if (validEmail) {
                              Log.d("Login", "Datos válidos, ejecutando loginViewModel.login()")
@@ -290,11 +269,9 @@ fun LoginScreen (
                     }
                 )
 
-                if (isLoading) {
                     Box(Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(modifier = Modifier.size(28.dp), color = colorResource(R.color.merkas))
-                    }
                 }
                     /* when (loginState) {
                         is LoginResult.Success -> {

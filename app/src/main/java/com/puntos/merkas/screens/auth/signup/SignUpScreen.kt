@@ -36,36 +36,39 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puntos.merkas.R
+import com.puntos.merkas.auth.AuthViewModel
 import com.puntos.merkas.components.buttons.BackButton
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
 import com.puntos.merkas.components.inputs.ErrorType
 import com.puntos.merkas.components.inputs.TextField
-import com.puntos.merkas.data.network.SignUpResult
 import com.puntos.merkas.screens.auth.PasswordRequirements
 import com.puntos.merkas.screens.auth.validatePassword
+import com.puntos.merkas.screens.merkas.tabHome.HomeScreen
 
 @Composable
 fun SignUpScreen (
     homeScreen: () -> Unit,
-    navController: NavController
+    navController: NavController,
+    viewModel: AuthViewModel = viewModel()
 ) {
+    var nombre by remember { mutableStateOf("") }
+    var apellido by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
+    var contrasena by remember { mutableStateOf("") }
+
     // Estado de los campos
-    var name by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf(false) }
 
-    var lastName by remember { mutableStateOf("") }
     var lastNameError by remember { mutableStateOf(false) }
 
     // var phonePrefix by remember { mutableStateOf("+57") }
-    var phoneNumber by remember { mutableStateOf("") }
     var phoneError by remember { mutableStateOf(false) }
 
-    var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf(false) }
     var emailErrorType by remember { mutableStateOf(ErrorType.NONE) }
 
-    var password by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf(false) }
     var passwordErrorType by remember { mutableStateOf(ErrorType.NONE) }
 
@@ -76,9 +79,8 @@ fun SignUpScreen (
 
     val forceShowError = attemptedSignUp
 
-    val signUpViewModel: SignUpViewModel = viewModel()
-    val signUpState by signUpViewModel.signUpState.collectAsState()
-    val isLoading by signUpViewModel.isLoading.collectAsState()
+    val message by viewModel.message.collectAsState()
+    val loading by viewModel.loading.collectAsState()
 
     Column(
         modifier = Modifier
@@ -115,14 +117,14 @@ fun SignUpScreen (
             // NOMBRE
             TextField(
                 label = stringResource(id = R.string.name),
-                value = name,
+                value = nombre,
                 onValueChange = {
-                    name = it
+                    nombre = it
                     nameError = false
                 },
                 isError = nameError,
                 errorType = null,
-                onFocusLost = { if (name.isBlank()) nameError = true },
+                onFocusLost = { if (nombre.isBlank()) nameError = true },
                 placeholder = "",
                 forceShowError = forceShowError
             )
@@ -130,14 +132,14 @@ fun SignUpScreen (
             // APELLIDO
             TextField(
                 label = stringResource(id = R.string.lastname),
-                value = lastName,
+                value = apellido,
                 onValueChange = {
-                    lastName = it
+                    apellido = it
                     lastNameError = false
                 },
                 isError = lastNameError,
                 errorType = null,
-                onFocusLost = { if (lastName.isBlank()) lastNameError = true },
+                onFocusLost = { if (apellido.isBlank()) lastNameError = true },
                 placeholder = "",
                 forceShowError = forceShowError
             )
@@ -162,14 +164,14 @@ fun SignUpScreen (
                 // NÚMERO DE TELÉFONO
                 TextField(
                     label = stringResource(id = R.string.phoneNumber),
-                    value = phoneNumber,
+                    value = telefono,
                     onValueChange = {
-                        phoneNumber = it
+                        telefono = it
                         phoneError = false
                     },
                     isError = phoneError,
                     errorType = null,
-                    onFocusLost = { if (phoneNumber.isBlank()) phoneError = true },
+                    onFocusLost = { if (telefono.isBlank()) phoneError = true },
                     placeholder = "",
                     forceShowError = forceShowError
                 )
@@ -178,9 +180,9 @@ fun SignUpScreen (
             // EMAIL
             TextField(
                 label = stringResource(id = R.string.email),
-                value = email,
+                value = correo,
                 onValueChange = {
-                    email = it
+                    correo = it
                     emailError = false
                     emailErrorType = ErrorType.NONE
                 },
@@ -188,11 +190,11 @@ fun SignUpScreen (
                 errorType = emailErrorType,
                 onFocusLost = {
                     when {
-                        email.isBlank() -> {
+                        correo.isBlank() -> {
                             emailError = true
                             emailErrorType = ErrorType.REQUIRED
                         }
-                        !email.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
+                        !correo.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
                             emailError = true
                             emailErrorType = ErrorType.INVALID_FORMAT
                         }
@@ -205,16 +207,16 @@ fun SignUpScreen (
             // CONTRASEÑA
             TextField(
                 label = stringResource(id = R.string.password),
-                value = password,
+                value = contrasena,
                 onValueChange = {
-                    password = it
+                    contrasena = it
                     passwordError = false
                     passwordErrorType = ErrorType.NONE
                 },
                 isError = passwordError,
                 errorType = passwordErrorType,
                 onFocusLost = {
-                    if (password.isBlank()) {
+                    if (contrasena.isBlank()) {
                         passwordError = true
                         passwordErrorType = ErrorType.REQUIRED
                     }
@@ -225,11 +227,12 @@ fun SignUpScreen (
                 forceShowError = forceShowError
             )
 
-            PasswordRequirements(password)
+            PasswordRequirements(contrasena)
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            if (isLoading) {
+
+            if (loading) {
                 Text(
                     "Registrando...",
                     color = Color.Gray,
@@ -241,61 +244,53 @@ fun SignUpScreen (
             ButtonAuth(
                 text = stringResource(R.string.signup),
                 style = ButtonAuthStyle.Login,
+                enabled = !loading,
                 onClick = {
                     Log.d("SignUpScreen", "Botón Registrarse presionado")
                     attemptedSignUp = true
-                    if (email.isBlank()) {
+
+                    // ---- VALIDAR EMAIL ----
+                    if (correo.isBlank()) {
                         emailError = true
                         emailErrorType = ErrorType.REQUIRED
-                    } else if (!email.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"))) {
+                    } else if (!correo.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"))) {
                         emailError = true
                         emailErrorType = ErrorType.INVALID_FORMAT
+                    } else {
+                        emailError = false
                     }
 
-                    val passwordState = validatePassword(password)
+                    // ---- VALIDAR CONTRASEÑA ----
+                    val passwordState = validatePassword(contrasena)
                     val passwordIsValid = with(passwordState) {
                         hasMinLength && hasUppercase && hasLowerCase && hasNumber && hasSpecialChar
                     }
 
-                    if (password.isBlank()) {
+                    if (contrasena.isBlank()) {
                         passwordError = true
                         passwordErrorType = ErrorType.REQUIRED
                     } else if (!passwordIsValid) {
                         passwordError = true
                         passwordErrorType = ErrorType.INVALID_FORMAT
+                    } else {
+                        passwordError = false
                     }
 
+                    // ---- VALIDAR OTROS DATOS ----
+                    nameError = nombre.isBlank()
+                    lastNameError = apellido.isBlank()
+                    phoneError = telefono.isBlank()
+
+                    // ---- SI TO/DO CORRECTO -> REGISTRAR ----
                     if (!emailError && !passwordError && !nameError && !lastNameError && !phoneError) {
                         Log.d("SignUpScreen", "Datos válidos, ejecutando signUpViewModel.signUp()")
+                        viewModel.register(nombre, apellido, telefono, correo, contrasena)
 
-                        signUpViewModel.signUp(
-                            nombre = name,
-                            apellido = lastName,
-                            telefono = phoneNumber,
-                            correo = email,
-                            contrasena = password,
-                            token = "",
-                            title = "usuarios"
-                        )
                     } else {
                         Log.d("SignUpScreen", "Errores detectados")
                     }
                 }
             )
-            when (val result = signUpState) {
-                is SignUpResult.Success -> {
-                    Log.d("SignUpScreen", "Registro exitoso, navegando a home")
-                    homeScreen()
-                    signUpViewModel.resetState()
-                }
-                is SignUpResult.Failure -> {
-                    Text("Error: ${result.message}",
-                        color = Color.Red,
-                        modifier = Modifier.padding(top = 8.dp))
-                }
-
-                null -> Unit
-            }
         }
     }
 }
