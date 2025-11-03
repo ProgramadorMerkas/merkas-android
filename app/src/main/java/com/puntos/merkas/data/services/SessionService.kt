@@ -1,13 +1,14 @@
 package com.puntos.merkas.data.services
 
+import android.util.Log
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
-
-const val baseURL = "https://www.merkas.co/merkasbusiness/"
+import java.net.URLEncoder
 
 // =============================
 // ==== LOGIN DATA STRUCTS ====
@@ -73,20 +74,16 @@ data class RegisterData(
     val telefono: String,
     val correo: String,
     val contrasena: String,
-    val token: String
+    val tokenStore: TokenStore
 )
 
-data class RegisterSuccessResponse(
-    val validacion: String
-)
+data class RegisterSuccessResponse(val validacion: String)
 
-data class RegisterErrorResponse(
-    val mensaje: String
-)
+data class RegisterErrorResponse(val mensaje: String)
 
 sealed class RegisterResult {
-    data class Success(val data: RegisterSuccessResponse) : RegisterResult()
-    data class Failure(val message: String) : RegisterResult()
+    data class Success(val data: RegisterSuccessResponse): RegisterResult()
+    data class Failure(val message: String): RegisterResult()
 }
 
 // =============================
@@ -182,15 +179,16 @@ object LoginService {
 // ===== REGISTER SERVICE ======
 // =============================
 
+/*
 object RegisterService {
 
     suspend fun register(data: RegisterData, title: String): RegisterResult = withContext(Dispatchers.IO) {
-        val url = URL("${baseURL}/function-api-registro.php?title=$title")
+        val url = URL("${baseURL}/function-api.php?title=$title")
         val boundary = "Boundary-${System.currentTimeMillis()}"
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-            setRequestProperty("Authorization", "Bearer access-token")
+            setRequestProperty("Authorization", "Bearer ${data.token}")
             doOutput = true
         }
 
@@ -206,10 +204,12 @@ object RegisterService {
                 appendFormField("usuario_telefono", data.telefono, boundary)
                 appendFormField("usuario_correo", data.correo, boundary)
                 appendFormField("contrasena", data.contrasena, boundary)
-                appendFormField("token", data.token, boundary)
                 appendFormField("usuario_numero_documento", "", boundary)
+                appendFormField("token", data.token, boundary)
                 append("--$boundary--\r\n")
             }
+
+            Log.d("REGISTER_DEBUG", "Body completo:\n$body")
 
             connection.outputStream.use { os ->
                 os.write(body.toByteArray(Charsets.UTF_8))
@@ -219,16 +219,21 @@ object RegisterService {
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val response = stream.bufferedReader().use { it.readText() }
 
-            if (code !in 200..299) {
-                return@withContext RegisterResult.Failure("HTTP Error $code")
-            }
+            Log.e("REGISTER_URL", url.toString())
+            Log.e("REGISTER_RESPONSE", response)
 
-            val jsonResponse = JSONObject(response)
-            return@withContext if (jsonResponse.has("mensaje")) {
-                RegisterResult.Failure(jsonResponse.getString("mensaje"))
+            if (code !in 200..299)
+                return@withContext RegisterResult.Failure("HTTP Error $code")
+
+            if (!response.trim().startsWith("{"))
+                return@withContext RegisterResult.Failure("Respuesta no JSON: $response")
+
+            val json = JSONObject(response)
+
+            return@withContext if (json.has("mensaje")) {
+                RegisterResult.Failure(json.getString("mensaje"))
             } else {
-                val success = RegisterSuccessResponse(jsonResponse.getString("validacion"))
-                RegisterResult.Success(success)
+                RegisterResult.Success(RegisterSuccessResponse(json.getString("validacion")))
             }
 
         } catch (e: Exception) {
@@ -244,4 +249,87 @@ object RegisterService {
         append("$value\r\n")
     }
 }
+ */
 
+object RegisterService {
+
+    suspend fun register(data: RegisterData, title: String): RegisterResult = withContext(Dispatchers.IO) {
+
+        val url = URL("https://puntos.merkas.com.co/app/function-api.php")
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            doInput = true
+            useCaches = false
+        }
+
+        val boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+
+        val body = StringBuilder()
+
+        fun add(name: String, value: String) {
+            body.append("--$boundary\r\n")
+            body.append("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
+            body.append("$value\r\n")
+        }
+
+        // ✅ Obtener token guardado
+        val savedToken = TokenService.obtenerToken(data.tokenStore)
+            ?: return@withContext RegisterResult.Failure("No hay token guardado")
+
+        Log.d("REGISTER_TOKEN_USADO", savedToken)
+
+        // ✅ Campos correctos (sin usar boundary como valor)
+        add("tipo", "normal")
+        add("usuario_id", "")
+        add("fileimagen", "")
+        add("usuario_social", "")
+        add("usuario_social_imagen", "")
+        add("nombre", data.nombre)
+        add("apellido", data.apellido)
+        add("telefono", data.telefono)
+        add("correo", data.correo)
+        add("contrasena", data.contrasena)
+        add("usuario_numero_documento", "")
+
+        // ✅ Token real por compatibilidad con backend
+        add("token", savedToken)
+        add("create_token", savedToken)
+
+        body.append("--$boundary--\r\n")
+
+        val bodyString = body.toString()
+        Log.d("REGISTER_BODY_PREVIEW", bodyString.take(800)) // log limitado si es largo
+
+        // Enviar body
+        connection.outputStream.use { it.write(bodyString.toByteArray()) }
+
+        // Leer respuesta
+        val responseCode = connection.responseCode
+        val response = try {
+            BufferedReader(InputStreamReader(connection.inputStream)).readText()
+        } catch (e: Exception) {
+            BufferedReader(InputStreamReader(connection.errorStream)).readText()
+        }
+
+        Log.d("REGISTER_HTTP_CODE", responseCode.toString())
+        Log.d("REGISTER_RESPONSE", response)
+
+        // ✅ Interpretar respuesta
+        return@withContext when {
+            response.contains("existe", ignoreCase = true) ->
+                RegisterResult.Failure("El correo ya está registrado")
+
+            response.contains("correcto", ignoreCase = true) ||
+                    response.contains("validacion", ignoreCase = true) ->
+                RegisterResult.Success(RegisterSuccessResponse("VALIDO"))
+
+            response.contains("token", ignoreCase = true) ->
+                RegisterResult.Failure("token_incorrecto")
+
+            else ->
+                RegisterResult.Failure("Error inesperado: $response")
+        }
+    }
+}

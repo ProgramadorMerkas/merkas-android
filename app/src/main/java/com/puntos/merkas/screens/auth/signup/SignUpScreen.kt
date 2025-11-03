@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
@@ -38,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puntos.merkas.R
 import com.puntos.merkas.auth.AuthViewModel
+import com.puntos.merkas.auth.AuthViewModelFactory
 import com.puntos.merkas.components.buttons.BackButton
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
@@ -45,14 +47,15 @@ import com.puntos.merkas.components.inputs.ErrorType
 import com.puntos.merkas.components.inputs.TextField
 import com.puntos.merkas.screens.auth.PasswordRequirements
 import com.puntos.merkas.screens.auth.validatePassword
-import com.puntos.merkas.screens.merkas.tabHome.HomeScreen
 
 @Composable
 fun SignUpScreen (
     homeScreen: () -> Unit,
-    navController: NavController,
-    viewModel: AuthViewModel = viewModel()
+    navController: NavController
 ) {
+    val context = LocalContext.current
+    val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
+
     var nombre by remember { mutableStateOf("") }
     var apellido by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
@@ -83,17 +86,6 @@ fun SignUpScreen (
     val message by viewModel.message.collectAsState()
     val loading by viewModel.loading.collectAsState()
 
-    val uiState by viewModel.uiState.collectAsState()
-
-    // 👇 Si el registro fue exitoso → navegar
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) {
-            navController.navigate("home") {
-                popUpTo("signup") { inclusive = true } // Borra pantalla signup del backstack
-            }
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -107,7 +99,7 @@ fun SignUpScreen (
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 15.dp)
-            ) {
+        ) {
             BackButton(navController)
 
             Spacer(modifier = Modifier.height(20.dp))

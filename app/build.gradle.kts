@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
+
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -39,9 +42,9 @@ android {
     buildFeatures {
         compose = true
     }
-    composeOptions {
+    /*composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
-    }
+    }*/
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -94,6 +97,16 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.storage)
+
+    implementation(libs.okhttp.urlconnection)
+    implementation(libs.kotlinx.serialization.json)
+
+    // DataStore preferences
+    implementation (libs.androidx.datastore.preferences)
+
+    // Kotlin coroutines (si no las tienes)
+    implementation (libs.kotlinx.coroutines.core)
+    implementation (libs.kotlinx.coroutines.android.v173)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
