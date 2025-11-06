@@ -34,10 +34,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -47,103 +51,84 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.puntos.merkas.components.bottomNavBar.BottomNavSpacer
+import com.puntos.merkas.components.offers.OffersCategory
 import com.puntos.merkas.screens.merkas.tabAllies.MapLibreView
-import java.net.URLEncoder
 
 @SuppressLint("ContextCastToActivity")
 @Composable
-fun HomeScreen(navController: NavHostController) {
+fun HomeScreen(
+    navController: NavHostController,
+    datosUsuarioViewModel: DatosUsuarioViewModel
+) {
     val context = LocalContext.current
     val activity = context as? Activity
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            //.background(Color.Yellow)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                //.background(Color.Green)
-                .padding(horizontal = 20.dp, vertical = 15.dp)
-                    ,
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            IconButton(
-                onClick = {
-                    val url = "whatsapp://send?text=¡Hola Merkas!&phone=573336012020"
+    val datosUsuario by datosUsuarioViewModel.datosUsuario.collectAsState()
 
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    }
-                    activity?.startActivity(intent)
-                    try {
-                        activity?.startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(activity, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier
-                    .shadow(
-                        elevation = 18.dp,
-                        shape = RoundedCornerShape(40.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.2f),
-                        spotColor = Color.Black.copy(alpha = 0.3f)
-                    )
-                    .size(48.dp)
-                    .background(Color.White, CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.LiveHelp,
-                    contentDescription = "",
-                    tint = colorResource(R.color.merkas)
-                )
-            }
-        }
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 32.dp, end = 32.dp)
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState())
-                //.background(Color.Cyan)
         ) {
 
-            Text("Hola, Puntos",
+            Spacer(Modifier.height(50.dp))
+
+            Text(
+                text = if (datosUsuario != null)
+                    "Hola, ${datosUsuario!!.usuario_nombre}"
+                else
+                    "Hola...",
                 fontSize = 35.sp,
-                fontWeight = FontWeight.ExtraBold)
-            Text("¡Gana puntos con Merkas hoy!",
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                "¡Gana puntos con Merkas hoy!",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.Gray)
+                color = Color.Gray
+            )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)
                     .padding(top = 30.dp)
-                    .background(colorResource(R.color.merkas),
-                        shape = RoundedCornerShape(12.dp)),
+                    .background(
+                        colorResource(R.color.merkas),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
-            ){
+            ) {
                 Column(
                     modifier = Modifier.padding(vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Mi Merkash",
+                    Text(
+                        "Mi Merkash",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 5.dp))
+                        modifier = Modifier.padding(bottom = 5.dp)
+                    )
 
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            "$0.00",
+                            if (datosUsuario != null)
+                                "$${datosUsuario!!.usuario_merkash}"
+                                else "Error",
                             color = Color.White,
                             fontSize = 14.sp,
-                            modifier = Modifier.padding(end = 10.dp)
+                            modifier = Modifier.padding(end = 10.dp),
                         )
                         Icon(
                             imageVector = Icons.Outlined.SentimentDissatisfied,
@@ -165,20 +150,30 @@ fun HomeScreen(navController: NavHostController) {
                     modifier = Modifier.padding(vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Mis Puntos",
+                    Text(
+                        "Mis Puntos",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 5.dp))
+                        modifier = Modifier.padding(bottom = 5.dp)
+                    )
 
-                    Row {
-                        Text("0.00",
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (datosUsuario != null)
+                                datosUsuario!!.usuario_puntos
+                            else "Error",
                             color = Color.White,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(end = 10.dp))
-                        Icon(imageVector = Icons.Outlined.SentimentDissatisfied,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(end = 10.dp)
+                        )
+                        Icon(
+                            imageVector = Icons.Outlined.SentimentDissatisfied,
                             contentDescription = "",
-                            tint = Color.White)
+                            tint = Color.White
+                        )
                     }
                 }
             }
@@ -187,9 +182,11 @@ fun HomeScreen(navController: NavHostController) {
                 Modifier.height(30.dp)
             )
 
-            Text("Gana más puntos",
+            Text(
+                "Gana más puntos",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold)
+                fontWeight = FontWeight.SemiBold
+            )
 
             Spacer(Modifier.height(10.dp))
 
@@ -203,14 +200,17 @@ fun HomeScreen(navController: NavHostController) {
                     modifier = Modifier
                         .weight(1f)
                         .height(110.dp)
-                        .background(Color(0xFFFF7C0D),
-                            shape = RoundedCornerShape(10.dp)),
+                        .background(
+                            Color(0xFFFF7C0D),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
                 ) {
                     Button(
                         onClick = { navController.navigate("offers") },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent),
+                            containerColor = Color.Transparent
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(0.dp)
                     ) {
@@ -244,26 +244,28 @@ fun HomeScreen(navController: NavHostController) {
                     Modifier.width(15.dp)
                 )
 
-                Box(modifier = Modifier
-                    .weight(1f)
-                    .height(110.dp)
-                    .background(Color(0xFFFF7C0D),
-                        shape = RoundedCornerShape(10.dp)),
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(110.dp)
+                        .background(
+                            Color(0xFF05B4E0),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
                 ) {
                     Button(
                         onClick = { navController.navigate("referrals") },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent),
+                            containerColor = Color.Transparent
+                        ),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(110.dp)
-                                .background(Color(0xFF05B4E0),
-                                    shape = RoundedCornerShape(10.dp)),
+                                .height(110.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
@@ -273,124 +275,131 @@ fun HomeScreen(navController: NavHostController) {
                                 tint = Color.White,
                                 modifier = Modifier.size(30.dp)
                             )
-                            Text("Invitar amigos",
+                            Text(
+                                "Invitar amigos",
                                 color = Color.White,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-
-            Spacer(
-                Modifier.height(30.dp)
-            )
-
-            Text("Ver ofertas por categoría",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold)
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 40.dp)
-                    .height(45.dp)
-                    .background(Color.White, shape = CircleShape)
-                    .border(width = 2.dp,
-                        color = Color(0xFF3E69B4),
-                        shape = CircleShape)
-                ,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier
-                    .fillMaxHeight()
-                    .width(50.dp)
-                    .background(Color(0xFF3E69B4), shape = CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.CellTower,
-                        tint = Color.White,
-                        contentDescription = ""
-                        )
-                }
-                Box(modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(end = 12.dp),
-                    contentAlignment = Alignment.Center
-
-                ) {
-                Text("TECNOLOGÍA Y COMUNICACIONES",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF3E69B4)
-                    )
-                }
-            }
-
-            Spacer(
-                Modifier.height(30.dp)
-            )
-
-            Text("Aliados cerca de ti",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold)
-
-            Spacer(Modifier.height(10.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                contentAlignment = Alignment.BottomEnd
-            ) {
-
-                MapLibreView(Modifier
-                    .fillMaxSize(),
-                    apiKey = "pJD8cJKKgMxqpoeJulK5")
-
-                Button(
-                    onClick = { navController.navigate("allies") },
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent),
-                    shape = RectangleShape,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.BottomEnd
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(72.dp)
-                                .height(27.dp)
-                                .background(
-                                    colorResource(R.color.merkas),
-                                    shape = RoundedCornerShape(8.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "Ver más",
-                                fontSize = 12.sp,
-                                color = Color.White
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
             }
 
-            Box(
+            Spacer(
+                Modifier.height(30.dp)
+            )
+
+            Text(
+                "Ver ofertas por categoría",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            OffersCategory(
+                onClick = { navController.navigate("offers") }
+            )
+
+            Spacer(
+                Modifier.height(30.dp)
+            )
+
+            Text(
+                "Aliados cerca de ti",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
-                    .height(15.dp)
+                    .fillMaxWidth()
+                    .height(130.dp),
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+
+                    MapLibreView(
+                        Modifier
+                            .fillMaxSize(),
+                        apiKey = "pJD8cJKKgMxqpoeJulK5"
+                    )
+
+                    Button(
+                        onClick = { navController.navigate("allies") },
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent
+                        ),
+                        shape = RectangleShape,
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.BottomEnd
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(72.dp)
+                                    .height(27.dp)
+                                    .background(
+                                        colorResource(R.color.merkas),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Ver más",
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        IconButton(
+            onClick = {
+                val url = "whatsapp://send?text=¡Hola Merkas!&phone=573336012020"
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+                try {
+                    activity?.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "WhatsApp no está instalado", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 15.dp, end = 24.dp)
+                .shadow(
+                    elevation = 18.dp,
+                    shape = RoundedCornerShape(40.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.2f),
+                    spotColor = Color.Black.copy(alpha = 0.3f)
+                )
+                .size(48.dp)
+                .background(Color.White, CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.LiveHelp,
+                contentDescription = "",
+                tint = colorResource(R.color.merkas)
             )
         }
     }

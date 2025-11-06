@@ -82,8 +82,6 @@ dependencies {
     implementation(libs.android.sdk)
 
     // --- Retrofit & Gson ---
-    implementation(libs.retrofit)
-    implementation(libs.converter.gson)
 
     // --- OkHttp (para peticiones HTTP y logs) ---
     implementation(libs.okhttp)
@@ -107,6 +105,8 @@ dependencies {
     // Kotlin coroutines (si no las tienes)
     implementation (libs.kotlinx.coroutines.core)
     implementation (libs.kotlinx.coroutines.android.v173)
+
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

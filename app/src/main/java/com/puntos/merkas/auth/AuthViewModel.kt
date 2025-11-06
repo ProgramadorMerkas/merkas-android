@@ -13,6 +13,7 @@ import com.puntos.merkas.data.services.RegisterResult
 import com.puntos.merkas.data.services.RegisterService
 import com.puntos.merkas.data.services.TokenService
 import com.puntos.merkas.data.services.TokenStore
+import com.puntos.merkas.screens.merkas.tabHome.DatosUsuarioViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -26,11 +27,20 @@ class AuthViewModel(private val tokenStore: TokenStore) : ViewModel() {
     private val _loading = MutableStateFlow(false)
     val loading = _loading.asStateFlow()
 
+    fun clearMessage() {
+        _message.value = null
+    }
+
     /**
      * LOGIN
      */
-    fun login(correo: String, contrasena: String) {
+    fun login(
+        correo: String,
+        contrasena: String,
+        datosUsuarioViewModel: DatosUsuarioViewModel
+    ) {
         viewModelScope.launch {
+            _message.value = null
             _loading.value = true
 
             // 1. Obtener token dinámico
@@ -60,15 +70,25 @@ class AuthViewModel(private val tokenStore: TokenStore) : ViewModel() {
                     val user = result.data
                     println("✅ Login correcto: ${user.usuario_nombre_completo}")
 
-                    // tokenStore.saveToken(token)
+                    datosUsuarioViewModel.setDatosUsuario(user)
+
                     Log.d("TOKEN_STORE", "Token guardado en DataStore: $token")
 
                     _message.value = "✅ Bienvenido ${result.data.usuario_nombre_completo}"
                     Log.d("LOGIN","✅ Usuario loggeado: ${result.data.usuario_nombre_completo}")
                 }
                 is LoginResult.Failure -> {
-                    _message.value = "❌ ${result.message}"
-                    Log.e("LOGIN_ERROR", result.message)
+                    // Si el mensaje del backend indica credenciales incorrectas
+                    val loginError = if (
+                        result.message.contains("datos_incorrecto", true)
+                    ) {
+                        "Email o contraseña incorrecto"
+                    } else {
+                        result.message
+                    }
+
+                    _message.value = loginError // 👈 sin el emoji
+
                 }
             }
             _loading.value = false
@@ -96,9 +116,9 @@ class AuthViewModel(private val tokenStore: TokenStore) : ViewModel() {
                         telefono = telefono,
                         correo = correo,
                         contrasena = contrasena,
-                        tokenStore = tokenStore
+                        tokenStore = tokenStore,
                     ),
-                    title = "registro",
+                    title = "registro"
                 )
             }
 

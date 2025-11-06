@@ -83,7 +83,7 @@ fun SignUpScreen (
 
     val forceShowError = attemptedSignUp
 
-    val message by viewModel.message.collectAsState()
+    val message by viewModel.message.collectAsState(initial = null)
     val loading by viewModel.loading.collectAsState()
 
     Column(

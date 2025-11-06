@@ -4,6 +4,7 @@ accompanistNavigationAnimationVersion = "<última-versión>"
 agp = "8.6.1"
 androidSdk = "11.3.0"
 browser = "1.8.0"
+coilCompose = "2.6.0"
 converterGson = "2.11.0"
 datastorePreferences = "1.1.7"
 kotlin = "2.0.0"
@@ -48,6 +49,7 @@ androidx-material-icons-extended = { module = "androidx.compose.material:materia
 androidx-navigation-animation-compose = { module = "androidx.navigation:navigation-animation-compose", version.ref = "navigationAnimationCompose" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 animation = { module = "androidx.navigation.compose:animation" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

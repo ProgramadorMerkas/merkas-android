@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.puntos.merkas.components.bottomNavBar.HomeNavigation
+import com.puntos.merkas.components.bottomNavBar.MainNavigation
 import com.puntos.merkas.components.transitions.composableWithTransitions
 import com.puntos.merkas.ui.theme.Merkas_kotlinTheme
 import com.puntos.merkas.screens.auth.IntroScreen
@@ -24,40 +25,3 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun MainNavigation() {
-    val navController = rememberNavController()
-
-    NavHost(
-        navController = navController,
-        startDestination = "intro"
-    ) {
-        composableWithTransitions("intro") {
-            IntroScreen(
-                onLoginClick = { navController.navigate("login") },
-                onRegisterClick = { navController.navigate("signup") }
-            )
-        }
-        composableWithTransitions("login") {
-            LoginScreen(
-                navController = navController,
-                homeScreen = { navController.navigate("home") {
-                    popUpTo("intro") { inclusive = true }
-                } }
-            )
-        }
-        composableWithTransitions("signup") {
-            SignUpScreen(
-                navController = navController,
-                homeScreen = {
-                    navController.navigate("home") {
-                        popUpTo("intro") { inclusive = true }
-                    }
-                }
-            )
-        }
-        composableWithTransitions("home") {
-            HomeNavigation()
-        }
-    }
-}

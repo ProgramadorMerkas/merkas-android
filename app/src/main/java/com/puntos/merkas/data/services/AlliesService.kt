@@ -11,6 +11,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.logging.HttpLoggingInterceptor
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -60,51 +63,50 @@ class AlliesService private constructor() {
     companion object {
         val shared: AlliesService by lazy { AlliesService() }
     }
+    // --- Cliente OkHttp con logs ---
+    private val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(
+                HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BODY
+                }
+            )
+            .build()
+    }
 
     suspend fun getAllies(token: String): AlliesResult = withContext(Dispatchers.IO) {
-        val urlString = "$baseURL/function-api.php?title=aliados_ubicacion&token=$token"
+        val url = "$baseURL/function-api.php?title=aliados_ubicacion&token=$token"
 
-        val url = try {
-            URL(urlString)
-        } catch (e: Exception) {
-            return@withContext AlliesResult.Failure("URL inválida")
-        }
-
-        val connection = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            setRequestProperty("Accept", "application/json")
-            connectTimeout = 10000
-            readTimeout = 10000
-        }
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
 
         try {
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val response = stream.bufferedReader().use { it.readText() }
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: return@withContext AlliesResult.Failure("Respuesta vacía")
 
-            Log.e("ALLIES_URL", urlString)
-            Log.e("ALLIES_RESPONSE", response)
+            Log.e("ALLIES_URL", url)
+            Log.e("ALLIES_RESPONSE", body)
 
             // Intentamos decodificar lista correcta
             runCatching {
-                Json.decodeFromString(AlliesResponse.serializer(), response)
+                Json.decodeFromString(AlliesResponse.serializer(), body)
             }.onSuccess { result ->
                 return@withContext AlliesResult.Success(result.aliadosMapas)
             }
 
             // Intentamos decodificar error
             runCatching {
-                Json.decodeFromString(AlliesErrorResponse.serializer(), response)
-            }.onSuccess { errorResult ->
-                return@withContext AlliesResult.Failure(errorResult.mensaje)
+                Json.decodeFromString(AlliesErrorResponse.serializer(), body)
+            }.onSuccess { error ->
+                return@withContext AlliesResult.Failure(error.mensaje)
             }
 
             return@withContext AlliesResult.Failure("unknown_response")
 
         } catch (e: Exception) {
             return@withContext AlliesResult.Failure("Error de red: ${e.localizedMessage}")
-        } finally {
-            connection.disconnect()
         }
     }
 }

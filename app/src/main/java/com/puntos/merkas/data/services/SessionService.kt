@@ -1,14 +1,17 @@
 package com.puntos.merkas.data.services
 
 import android.util.Log
-import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 // =============================
 // ==== LOGIN DATA STRUCTS ====
@@ -92,48 +95,55 @@ sealed class RegisterResult {
 
 object LoginService {
 
+    // Cliente OkHttp con logs visibles en Logcat
+    private val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(
+                HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BODY
+                }
+            )
+            .build()
+    }
+
     suspend fun login(data: LoginData): LoginResult = withContext(Dispatchers.IO) {
         val url = URL("${baseURL}/function-api.php?title=usuarios")
-        val connection = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            setRequestProperty("Content-Type", "application/json")
-            doOutput = true
-        }
 
         try {
-            val json = JSONObject().apply {
+            val jsonBody = JSONObject().apply {
                 put("correo", data.correo)
                 put("contrasena", data.contrasena)
                 put("token", data.token)
+            }.toString()
+
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+            val body = jsonBody.toRequestBody(mediaType)
+
+            val request = Request.Builder()
+                .url(url)
+                .post(body)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseString = response.body?.string() ?: return@withContext LoginResult.Failure("Respuesta vacía")
+
+            Log.e("LOGIN_URL", url.toString())
+            Log.e("LOGIN_RESPONSE", responseString)
+
+            if (!response.isSuccessful) {
+                return@withContext LoginResult.Failure("HTTP Error ${response.code}")
             }
 
-            connection.outputStream.use { os ->
-                BufferedWriter(OutputStreamWriter(os, "UTF-8")).use { writer ->
-                    writer.write(json.toString())
-                    writer.flush()
-                }
-            }
+            val json = JSONObject(responseString)
 
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val response = stream.bufferedReader().use { it.readText() }
-
-            if (code !in 200..299) {
-                return@withContext LoginResult.Failure("HTTP Error $code")
-            }
-
-            val jsonResponse = JSONObject(response)
-            return@withContext if (jsonResponse.has("mensaje")) {
-                LoginResult.Failure(jsonResponse.getString("mensaje"))
+            return@withContext if (json.has("mensaje")) {
+                LoginResult.Failure(json.getString("mensaje"))
             } else {
-                val user = parseLoginResponse(jsonResponse)
-                LoginResult.Success(user)
+                LoginResult.Success(parseLoginResponse(json))
             }
 
         } catch (e: Exception) {
-            LoginResult.Failure(e.message ?: "Unknown error")
-        } finally {
-            connection.disconnect()
+            return@withContext LoginResult.Failure("Error de red: ${e.localizedMessage}")
         }
     }
 
@@ -179,7 +189,7 @@ object LoginService {
 // ===== REGISTER SERVICE ======
 // =============================
 
-/*
+
 object RegisterService {
 
     suspend fun register(data: RegisterData, title: String): RegisterResult = withContext(Dispatchers.IO) {
@@ -188,7 +198,7 @@ object RegisterService {
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-            setRequestProperty("Authorization", "Bearer ${data.token}")
+            setRequestProperty("Authorization", "Bearer ${data.tokenStore}")
             doOutput = true
         }
 
@@ -205,7 +215,7 @@ object RegisterService {
                 appendFormField("usuario_correo", data.correo, boundary)
                 appendFormField("contrasena", data.contrasena, boundary)
                 appendFormField("usuario_numero_documento", "", boundary)
-                appendFormField("token", data.token, boundary)
+                appendFormField("token", data.tokenStore.toString(), boundary)
                 append("--$boundary--\r\n")
             }
 
@@ -249,87 +259,9 @@ object RegisterService {
         append("$value\r\n")
     }
 }
- */
 
-object RegisterService {
-
-    suspend fun register(data: RegisterData, title: String): RegisterResult = withContext(Dispatchers.IO) {
-
-        val url = URL("https://puntos.merkas.com.co/app/function-api.php")
-        val connection = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doOutput = true
-            doInput = true
-            useCaches = false
-        }
-
-        val boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
-        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-
-        val body = StringBuilder()
-
-        fun add(name: String, value: String) {
-            body.append("--$boundary\r\n")
-            body.append("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
-            body.append("$value\r\n")
-        }
-
-        // ✅ Obtener token guardado
-        val savedToken = TokenService.obtenerToken(data.tokenStore)
-            ?: return@withContext RegisterResult.Failure("No hay token guardado")
-
-        Log.d("REGISTER_TOKEN_USADO", savedToken)
-
-        // ✅ Campos correctos (sin usar boundary como valor)
-        add("tipo", "normal")
-        add("usuario_id", "")
-        add("fileimagen", "")
-        add("usuario_social", "")
-        add("usuario_social_imagen", "")
-        add("nombre", data.nombre)
-        add("apellido", data.apellido)
-        add("telefono", data.telefono)
-        add("correo", data.correo)
-        add("contrasena", data.contrasena)
-        add("usuario_numero_documento", "")
-
-        // ✅ Token real por compatibilidad con backend
-        add("token", savedToken)
-        add("create_token", savedToken)
-
-        body.append("--$boundary--\r\n")
-
-        val bodyString = body.toString()
-        Log.d("REGISTER_BODY_PREVIEW", bodyString.take(800)) // log limitado si es largo
-
-        // Enviar body
-        connection.outputStream.use { it.write(bodyString.toByteArray()) }
-
-        // Leer respuesta
-        val responseCode = connection.responseCode
-        val response = try {
-            BufferedReader(InputStreamReader(connection.inputStream)).readText()
-        } catch (e: Exception) {
-            BufferedReader(InputStreamReader(connection.errorStream)).readText()
-        }
-
-        Log.d("REGISTER_HTTP_CODE", responseCode.toString())
-        Log.d("REGISTER_RESPONSE", response)
-
-        // ✅ Interpretar respuesta
-        return@withContext when {
-            response.contains("existe", ignoreCase = true) ->
-                RegisterResult.Failure("El correo ya está registrado")
-
-            response.contains("correcto", ignoreCase = true) ||
-                    response.contains("validacion", ignoreCase = true) ->
-                RegisterResult.Success(RegisterSuccessResponse("VALIDO"))
-
-            response.contains("token", ignoreCase = true) ->
-                RegisterResult.Failure("token_incorrecto")
-
-            else ->
-                RegisterResult.Failure("Error inesperado: $response")
-        }
+object SessionService {
+    suspend fun cerrarSesion(tokenStore: TokenStore) {
+        tokenStore.clearToken()
     }
 }
