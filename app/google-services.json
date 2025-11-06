@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "12001495007",
+    "firebase_url": "https://merkas-8179e.firebaseio.com",
+    "project_id": "merkas-8179e",
+    "storage_bucket": "merkas-8179e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12001495007:android:8a669442a505c0a8f9666a",
+        "android_client_info": {
+          "package_name": "com.merkas_.twa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "12001495007-fi9tmhim74ie7gf08c0l2ie6h28nggi5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.merkas_.twa",
+            "certificate_hash": "b1830fd5c380e136f88b1e079d45c5ebbf3ca087"
+          }
+        },
+        {
+          "client_id": "12001495007-r1ucb8mfqoa2527ae5g8g0lsnb80orqn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARCmrY0PfWTUoQGoR3sqZsnuJkc5g4ngg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "12001495007-r1ucb8mfqoa2527ae5g8g0lsnb80orqn.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "12001495007-9e0seu8en6aremfe6q56iop1r6v7b82v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.merkas-.twa"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

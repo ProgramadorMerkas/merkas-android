@@ -14,8 +14,8 @@ android {
         applicationId = "com.puntos.merkas"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 20251106
+        versionName = "20251106.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,8 +23,30 @@ android {
         }
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+
+        create("release") {
+            if (project.hasProperty("MYAPP_UPLOAD_STORE_FILE")) {
+                storeFile = file(project.property("MYAPP_UPLOAD_STORE_FILE") as String)
+                storePassword = project.property("MYAPP_UPLOAD_STORE_PASSWORD") as String
+                keyAlias = project.property("MYAPP_UPLOAD_KEY_ALIAS") as String
+                keyPassword = project.property("MYAPP_UPLOAD_KEY_PASSWORD") as String
+            }
+        }
+    }
+
     buildTypes {
-        release {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -32,6 +54,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
