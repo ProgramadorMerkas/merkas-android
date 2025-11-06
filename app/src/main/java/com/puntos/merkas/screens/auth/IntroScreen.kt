@@ -48,7 +48,7 @@ fun IntroScreen(
             ) {
                 // IMAGEN CENTRAL -> LOGO
                 Image(
-                    painter = painterResource(id = R.drawable.a1024_1),
+                    painter = painterResource(id = R.drawable.logo_merkas),
                     contentDescription = "Logo de la aplicación MERKAS",
                     modifier = Modifier.size(size = 280.dp)
                 )
