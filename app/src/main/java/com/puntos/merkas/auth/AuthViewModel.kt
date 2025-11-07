@@ -73,6 +73,11 @@ class AuthViewModel(private val tokenStore: TokenStore) : ViewModel() {
                     datosUsuarioViewModel.setDatosUsuario(user)
                     TokenService.saveUserSessionToken(tokenStore, token)
 
+                    // 🟢 Guarda también los datos del usuario (nombre y correo)
+                    tokenStore.saveUserData(
+                        nombre = user.usuario_nombre,
+                        email = user.usuario_correo
+                    )
 
                     Log.d("TOKEN_STORE", "Token guardado en DataStore: $token")
 

@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,12 +76,18 @@ fun HomeScreen(
     val alliesViewModel = remember { AlliesViewModel(tokenStore) }
     val offersViewModel = remember { OffersViewModel(tokenStore) }
 
+    // 🔹 Variables locales para nombre, puntos y merkash guardados
+    val nombreGuardado = remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         val token = tokenStore.getToken()
         if (token != null) {
             alliesViewModel.loadAllies(token)
             offersViewModel.loadOffers(token)
         }
+        // 🟢 Leer el nombre guardado en DataStore (por si no hay datosUsuario en memoria)
+        val (nombre, _) = tokenStore.getUserData()
+        nombreGuardado.value = nombre
     }
 
     Box(
@@ -96,10 +103,11 @@ fun HomeScreen(
             Spacer(Modifier.height(50.dp))
 
             Text(
-                text = if (datosUsuario != null)
-                    "Hola, ${datosUsuario!!.usuario_nombre}"
-                else
-                    "Hola...",
+                text = when {
+                    datosUsuario != null -> "Hola, ${datosUsuario!!.usuario_nombre}"
+                    nombreGuardado.value != null -> "Hola, ${nombreGuardado.value}"
+                    else -> "Hola..."
+                },
                 fontSize = 35.sp,
                 fontWeight = FontWeight.ExtraBold
             )

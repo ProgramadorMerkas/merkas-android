@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import okhttp3.MediaType.Companion.toMediaType
@@ -82,11 +83,22 @@ class TokenStore(private val context: Context) {
 
     companion object {
         val TOKEN_KEY = stringPreferencesKey("user_token")
+        val USER_NAME_KEY = stringPreferencesKey("user_name")
+        val USER_EMAIL_KEY = stringPreferencesKey("user_email")
     }
 
+    // 🟢 Guardar token
     suspend fun saveToken(token: String) {
         context.dataStore.edit { prefs ->
             prefs[TOKEN_KEY] = token
+        }
+    }
+
+    // 🟢 Guardar datos de usuario (nombre y correo)
+    suspend fun saveUserData(nombre: String, email: String) {
+        context.dataStore.edit { prefs ->
+            prefs[USER_NAME_KEY] = nombre
+            prefs[USER_EMAIL_KEY] = email
         }
     }
 
@@ -94,12 +106,21 @@ class TokenStore(private val context: Context) {
         prefs[TOKEN_KEY]
     }
 
+    // 🟢 Obtener token
     suspend fun getToken(): String? {
         return context.dataStore.data
             .map { prefs -> prefs[TOKEN_KEY] }
             .firstOrNull()
     }
 
+    // 🟢 Obtener datos del usuario
+    suspend fun getUserData(): Pair<String?, String?> {
+        return context.dataStore.data.map { prefs ->
+            prefs[USER_NAME_KEY] to prefs[USER_EMAIL_KEY]
+        }.first()
+    }
+
+    // 🟢 Borrar to-do (logout)
     suspend fun clearToken() {
         context.dataStore.edit { prefs ->
             prefs.clear()
