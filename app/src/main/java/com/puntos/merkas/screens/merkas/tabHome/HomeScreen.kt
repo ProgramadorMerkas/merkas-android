@@ -37,8 +37,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +57,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.puntos.merkas.components.bottomNavBar.BottomNavSpacer
 import com.puntos.merkas.components.offers.OffersCategory
+import com.puntos.merkas.data.services.AlliesViewModel
+import com.puntos.merkas.data.services.OffersViewModel
+import com.puntos.merkas.data.services.TokenStore
 import com.puntos.merkas.screens.merkas.tabAllies.MapLibreView
 
 @SuppressLint("ContextCastToActivity")
@@ -65,8 +70,18 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-
     val datosUsuario by datosUsuarioViewModel.datosUsuario.collectAsState()
+    val tokenStore = remember { TokenStore(context) }
+    val alliesViewModel = remember { AlliesViewModel(tokenStore) }
+    val offersViewModel = remember { OffersViewModel(tokenStore) }
+
+    LaunchedEffect(Unit) {
+        val token = tokenStore.getToken()
+        if (token != null) {
+            alliesViewModel.loadAllies(token)
+            offersViewModel.loadOffers(token)
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()

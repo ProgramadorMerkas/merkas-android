@@ -69,6 +69,11 @@ object TokenService {
             null
         }
     }
+
+    suspend fun saveUserSessionToken(tokenStore: TokenStore, token: String) {
+        tokenStore.saveToken(token)
+    }
+
 }
 
 private val Context.dataStore by preferencesDataStore("session_store")
@@ -100,5 +105,4 @@ class TokenStore(private val context: Context) {
             prefs.clear()
         }
     }
-
 }

@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.padding
@@ -19,32 +18,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.puntos.merkas.components.transitions.composableWithTransitions
-import com.puntos.merkas.screens.merkas.tabAllies.AlliesScreen
-import com.puntos.merkas.screens.merkas.tabHome.HomeScreen
-import com.puntos.merkas.screens.merkas.tabMenu.MenuScreen
-import com.puntos.merkas.screens.merkas.tabOffers.OffersScreen
-import com.puntos.merkas.screens.merkas.tabReferrals.ReferralsScreen
 import com.puntos.merkas.data.services.TokenStore
 import com.puntos.merkas.screens.auth.IntroScreen
 import com.puntos.merkas.screens.auth.login.LoginScreen
 import com.puntos.merkas.screens.auth.signup.SignUpScreen
+import com.puntos.merkas.screens.merkas.tabAllies.AlliesScreen
 import com.puntos.merkas.screens.merkas.tabHome.DatosUsuarioViewModel
+import com.puntos.merkas.screens.merkas.tabHome.HomeScreen
+import com.puntos.merkas.screens.merkas.tabMenu.MenuScreen
 import com.puntos.merkas.screens.merkas.tabOffers.EcommerceScreen
+import com.puntos.merkas.screens.merkas.tabOffers.OffersScreen
+import com.puntos.merkas.screens.merkas.tabReferrals.ReferralsScreen
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(isLoggedIn: Boolean) {
     val navController = rememberNavController()
     val datosUsuarioViewModel: DatosUsuarioViewModel = viewModel()
 
+    val startDestination = if (isLoggedIn) "home" else "intro"
+
     NavHost(
         navController = navController,
-        startDestination = "intro"
+        startDestination = startDestination
     ) {
         composableWithTransitions("intro") {
             IntroScreen(

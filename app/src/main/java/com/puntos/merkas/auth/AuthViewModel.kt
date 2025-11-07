@@ -71,6 +71,8 @@ class AuthViewModel(private val tokenStore: TokenStore) : ViewModel() {
                     println("✅ Login correcto: ${user.usuario_nombre_completo}")
 
                     datosUsuarioViewModel.setDatosUsuario(user)
+                    TokenService.saveUserSessionToken(tokenStore, token)
+
 
                     Log.d("TOKEN_STORE", "Token guardado en DataStore: $token")
 
