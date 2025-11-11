@@ -79,12 +79,21 @@ object TokenService {
 
 private val Context.dataStore by preferencesDataStore("session_store")
 
+data class UserData(
+    val nombre: String?,
+    val email: String?,
+    val merkash: String,
+    val puntos: String
+)
+
 class TokenStore(private val context: Context) {
 
     companion object {
         val TOKEN_KEY = stringPreferencesKey("user_token")
         val USER_NAME_KEY = stringPreferencesKey("user_name")
         val USER_EMAIL_KEY = stringPreferencesKey("user_email")
+        val USER_MERKASH_KEY = stringPreferencesKey("user_merkash")
+        val USER_PUNTOS_KEY = stringPreferencesKey("user_puntos")
     }
 
     // 🟢 Guardar token
@@ -95,10 +104,17 @@ class TokenStore(private val context: Context) {
     }
 
     // 🟢 Guardar datos de usuario (nombre y correo)
-    suspend fun saveUserData(nombre: String, email: String) {
+    suspend fun saveUserData(
+        nombre: String,
+        email: String,
+        merkash: String,
+        puntos: String
+    ) {
         context.dataStore.edit { prefs ->
             prefs[USER_NAME_KEY] = nombre
             prefs[USER_EMAIL_KEY] = email
+            prefs[USER_MERKASH_KEY] = merkash
+            prefs[USER_PUNTOS_KEY] = puntos
         }
     }
 
@@ -114,10 +130,15 @@ class TokenStore(private val context: Context) {
     }
 
     // 🟢 Obtener datos del usuario
-    suspend fun getUserData(): Pair<String?, String?> {
-        return context.dataStore.data.map { prefs ->
-            prefs[USER_NAME_KEY] to prefs[USER_EMAIL_KEY]
-        }.first()
+    suspend fun getUserData(): UserData {
+        val prefs = context.dataStore.data.first()
+
+        return UserData(
+            nombre = prefs[USER_NAME_KEY],
+            email = prefs[USER_EMAIL_KEY],
+            merkash = prefs[USER_MERKASH_KEY] ?: "$0.00",
+            puntos = prefs[USER_PUNTOS_KEY] ?: "0.00"
+        )
     }
 
     // 🟢 Borrar to-do (logout)

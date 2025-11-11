@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,6 +61,7 @@ import com.puntos.merkas.components.bottomNavBar.BottomNavSpacer
 import com.puntos.merkas.components.offers.OffersCategory
 import com.puntos.merkas.data.services.AlliesViewModel
 import com.puntos.merkas.data.services.OffersViewModel
+import com.puntos.merkas.data.services.TokenService
 import com.puntos.merkas.data.services.TokenStore
 import com.puntos.merkas.screens.merkas.tabAllies.MapLibreView
 
@@ -78,16 +80,26 @@ fun HomeScreen(
 
     // 🔹 Variables locales para nombre, puntos y merkash guardados
     val nombreGuardado = remember { mutableStateOf<String?>(null) }
+    val merkashGuardado = remember { mutableStateOf("0.00") }
+    val puntosGuardado = remember { mutableStateOf("0.00") }
 
     LaunchedEffect(Unit) {
-        val token = tokenStore.getToken()
+        val userData = tokenStore.getUserData()
+        var token = tokenStore.getToken()
+
+        // Actualizamos estados
+        nombreGuardado.value = userData.nombre
+        merkashGuardado.value = userData.merkash
+        puntosGuardado.value = userData.puntos
+
+        if (token.isNullOrBlank()) {
+            token = TokenService.obtenerToken(tokenStore)
+        }
+
         if (token != null) {
             alliesViewModel.loadAllies(token)
             offersViewModel.loadOffers(token)
         }
-        // 🟢 Leer el nombre guardado en DataStore (por si no hay datosUsuario en memoria)
-        val (nombre, _) = tokenStore.getUserData()
-        nombreGuardado.value = nombre
     }
 
     Box(
@@ -146,13 +158,12 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            if (datosUsuario != null)
-                                "$${datosUsuario!!.usuario_merkash}"
-                                else "Error",
+                            text = "$ ${datosUsuario?.usuario_merkash ?: merkashGuardado.value}",
                             color = Color.White,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(end = 10.dp),
                         )
+                        Log.d("TEXT", merkashGuardado.toString())
                         Icon(
                             imageVector = Icons.Outlined.SentimentDissatisfied,
                             contentDescription = "",
@@ -185,9 +196,7 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            if (datosUsuario != null)
-                                datosUsuario!!.usuario_puntos
-                            else "Error",
+                            text = datosUsuario?.usuario_puntos ?: puntosGuardado.value,
                             color = Color.White,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(end = 10.dp)
@@ -391,6 +400,7 @@ fun HomeScreen(
                     }
                 }
             }
+            BottomNavSpacer()
         }
 
         IconButton(
