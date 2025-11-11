@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,21 +47,43 @@ import kotlinx.coroutines.delay
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapView
-import androidx.compose.runtime.key
+import androidx.navigation.NavController
+import com.puntos.merkas.data.services.AlliesProps
+import com.puntos.merkas.data.services.AlliesViewModel
+import com.puntos.merkas.data.services.TokenStore
+import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.maps.MapLibreMap
 
 @Composable
-fun AlliesScreen() {
+fun AlliesScreen(
+    viewModel: AlliesViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    token: String,
+    navController: NavController
+) {
     val context = LocalContext.current
+    val tokenStore = remember { TokenStore(context) }
     val activity = context as? Activity
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Estado del ViewModel
+    val allies by viewModel.allies.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // Cargar aliados al entrar
+    LaunchedEffect(Unit) {
+        viewModel.loadAllies(token, tokenStore)
+    }
 
     var hasPermission by remember { mutableStateOf(false) }
     var canAskAgain by remember { mutableStateOf(true) }
 
     // Recordar si ya intentamos solicitar el permiso para no repetir en recomposición
     var permissionRequested by rememberSaveable { mutableStateOf(false) }
+
+    // Referencias para reactividad del mapa
+    var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
+    var styleLoaded by remember { mutableStateOf(false) }
 
     // Función para actualizar el estado actual de los permisos
     fun refreshPermissionState() {
@@ -98,7 +122,6 @@ fun AlliesScreen() {
         hasPermission = permissions.values.any { it }
         refreshPermissionState()
         permissionRequested = true
-
         if (!hasPermission) {
             Toast.makeText(
                 context,
@@ -112,7 +135,6 @@ fun AlliesScreen() {
     LaunchedEffect(Unit) {
         delay(300)
         refreshPermissionState()
-
         if (!hasPermission && !permissionRequested) {
             permissionLauncher.launch(
                 arrayOf(
@@ -130,55 +152,79 @@ fun AlliesScreen() {
         contentAlignment = Alignment.Center
     ) {
         // El mapa se muestra siempre (si no hay permisos, mapa general)
-            MapLibreView(
-                modifier = Modifier.fillMaxSize(),
-                apiKey = "pJD8cJKKgMxqpoeJulK5",
-                onMapReady = { view -> // Guardamos referencia al MapView
-                    view.getMapAsync { map ->
-                        if (hasPermission) {
-                            map.getStyle { style ->
-                                if (map.style == null || map.style?.isFullyLoaded != true) return@getStyle
-                                try {
-                                    val locationComponent = map.locationComponent
-                                    if (!locationComponent.isLocationComponentActivated) {
-                                        val options = LocationComponentActivationOptions.builder(
-                                            context,
-                                            style
-                                        )
-                                            .build()
-                                        locationComponent.activateLocationComponent(options)
-                                    }
-                                    locationComponent.isLocationComponentEnabled = true
+        MapLibreView(
+            modifier = Modifier.fillMaxSize(),
+            apiKey = "pJD8cJKKgMxqpoeJulK5",
+            onMapReady = { view ->
+                view.getMapAsync { map ->
+                    mapRef = map
+                    map.getStyle { style ->
+                        styleLoaded = true
+                    }
 
-                                    locationComponent.lastKnownLocation?.let {
-                                        val position = CameraPosition.Builder()
-                                            .target(LatLng(it.latitude, it.longitude))
-                                            .zoom(14.0)
-                                            .build()
-                                        map.animateCamera(
-                                            CameraUpdateFactory.newCameraPosition(
-                                                position
-                                            )
-                                        )
-                                    }
-                                } catch (e: SecurityException) {
-                                    e.printStackTrace()
+                    // Manejo de cámara según permisos
+                    if (hasPermission) {
+                        map.getStyle { style ->
+                            try {
+                                val locationComponent = map.locationComponent
+                                if (!locationComponent.isLocationComponentActivated) {
+                                    val options = LocationComponentActivationOptions.builder(
+                                        context,
+                                        style
+                                    ).build()
+                                    locationComponent.activateLocationComponent(options)
                                 }
+                                locationComponent.isLocationComponentEnabled = true
+                                locationComponent.lastKnownLocation?.let {
+                                    val position = CameraPosition.Builder()
+                                        .target(LatLng(it.latitude, it.longitude))
+                                        .zoom(14.0)
+                                        .build()
+                                    map.animateCamera(
+                                        CameraUpdateFactory.newCameraPosition(position)
+                                    )
+                                }
+                            } catch (e: SecurityException) {
+                                e.printStackTrace()
                             }
-                        } else {
-                            // Mapa general
-                            val bogota = LatLng(4.7110, -74.0721)
-                            val position = CameraPosition.Builder()
-                                .target(bogota)
-                                .zoom(11.5)
-                                .build()
-                            map.animateCamera(CameraUpdateFactory.newCameraPosition(position))
                         }
+                    } else {
+                        val bogota = LatLng(4.7110, -74.0721)
+                        val position = CameraPosition.Builder()
+                            .target(bogota)
+                            .zoom(11.5)
+                            .build()
+                        map.animateCamera(CameraUpdateFactory.newCameraPosition(position))
                     }
                 }
-            )
+            }
+        )
 
-        // Si no hay permiso, mostramos mensaje + botón
+        // 🎯 EFECTO REACTIVO: Añadir/actualizar marcadores cuando cambien los aliados
+        LaunchedEffect(allies, mapRef, styleLoaded) {
+            val map = mapRef ?: return@LaunchedEffect
+            if (!styleLoaded) return@LaunchedEffect
+
+            try {
+                // Limpiar marcadores previos
+                map.clear()
+
+                // Agregar nuevos pines
+                allies.forEach { ally ->
+                    try {
+                        val lat = ally.latitud.replace(',', '.').toDouble()
+                        val lng = ally.longitud.replace(',', '.').toDouble()
+                        map.addMarker(
+                            MarkerOptions()
+                                .position(LatLng(lat, lng))
+                                .title(ally.nombreCompleto)
+                        )
+                    } catch (_: Exception) { }
+                }
+            } catch (_: Exception) { }
+        }
+
+        // UI sin permisos
         AnimatedVisibility(
             visible = !hasPermission,
             enter = fadeIn(),
@@ -188,34 +234,21 @@ fun AlliesScreen() {
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 16.dp)
-                    .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Mostrando mapa general",
-                    color = Color.Gray
-                )
-                    if (canAskAgain) {
-                        Button(
-                            onClick = {
+                    Text(text = "Mostrando mapa general", color = Color.Gray)
+                    Button(
+                        onClick = {
+                            if (canAskAgain) {
                                 permissionLauncher.launch(
                                     arrayOf(
                                         Manifest.permission.ACCESS_FINE_LOCATION,
                                         Manifest.permission.ACCESS_COARSE_LOCATION
                                     )
                                 )
-                            },
-                            modifier = Modifier.padding(top = 6.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorResource(R.color.merkas)
-                            )
-                        ) {
-                            Text("¿Permitir ubicación?")
-                        }
-                    } else {
-                        Button(
-                            onClick = {
+                            } else {
                                 try {
                                     val intent = Intent(
                                         Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -224,26 +257,20 @@ fun AlliesScreen() {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     }
                                     context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    Toast.makeText(
-                                        context,
-                                        "No se pudo abrir Ajustes",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "No se pudo abrir Ajustes", Toast.LENGTH_SHORT).show()
                                 }
-                            },
-                            modifier = Modifier.padding(top = 6.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorResource(R.color.merkas)
-                            )
-                        ) {
-                            Text("¿Permitir ubicación?")
-                        }
+                            }
+                        },
+                        modifier = Modifier.padding(top = 6.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(R.color.merkas)
+                        )
+                    ) {
+                        Text("Permitir ubicación")
                     }
                 }
             }
-
         }
     }
 }

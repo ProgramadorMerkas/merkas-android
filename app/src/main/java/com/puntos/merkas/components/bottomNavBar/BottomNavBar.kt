@@ -39,18 +39,12 @@ fun BottomNavBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // .padding(start = 18.dp, end = 18.dp, bottom = 18.dp)
+            .padding(horizontal = 20.dp, vertical = 30.dp),
     ) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                /* .shadow(
-                    8.dp,
-                    RoundedCornerShape(50.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.2f),
-                    spotColor = Color.Black.copy(alpha = 0.3f)
-                ) */
-                .background(Color.White),
+                .background(Color.White, shape = RoundedCornerShape(24.dp)),
         ) {
             bottomNavItems.forEach { item ->
                 val selected = currentDestination == item.route

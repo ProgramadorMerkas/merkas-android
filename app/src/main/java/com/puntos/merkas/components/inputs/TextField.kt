@@ -60,7 +60,8 @@ fun TextField(
     imeAction: ImeAction = ImeAction.Next, // Por defecto, enter -> siguiente
     onNext: (() -> Unit)? = null,
     onDone: (() -> Unit)? = null,
-    forceShowError: Boolean = false
+    forceShowError: Boolean = false,
+    externalErrorMessage: String? = null // 🔹 NUEVO
 ) {
     // Nuevo estado interno: detecta si se tocó el campo
     var hasBeenFocused by remember { mutableStateOf(false) }
@@ -168,13 +169,12 @@ fun TextField(
                 }
             },
             shape = RoundedCornerShape(15.dp),
-            isError = showError,
+            isError = showError || externalErrorMessage != null,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = if (hasBeenFocused && !isValid)
+                focusedBorderColor = if ((hasBeenFocused && !isValid) || externalErrorMessage != null)
                     colorResource(id = R.color.merkas)
-                else
-                    Color.Black,
-                unfocusedBorderColor = if (hasBeenFocused && !isValid)
+                else Color.Black,
+                unfocusedBorderColor = if ((hasBeenFocused && !isValid) || externalErrorMessage != null)
                     colorResource(id = R.color.merkas)
                 else Color.Gray,
                 cursorColor = colorResource(id = R.color.merkas)
@@ -182,14 +182,22 @@ fun TextField(
         )
 
         // Mensaje de error dinámico
-        if (showError) {
+        // 🔹 Mostrar error externo (por ejemplo "Email o contraseña incorrecto")
+        if (externalErrorMessage != null) {
+            Text(
+                text = externalErrorMessage,
+                color = colorResource(R.color.merkas),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        } else if (showError) {
             val errorMessage = when {
                 value.isBlank() -> stringResource(id = R.string.requiredField)
-                label.contains(stringResource(id=R.string.email), ignoreCase = true) ->
-                    stringResource(id=R.string.validEmail)
-                isPassword -> stringResource(id=R.string.validPassword)
-                label.contains(stringResource(id=R.string.phoneNumber), ignoreCase = true) ->
-                    stringResource(id=R.string.validPhoneNumber)
+                label.contains(stringResource(id = R.string.email), ignoreCase = true) ->
+                    stringResource(id = R.string.validEmail)
+                isPassword -> stringResource(id = R.string.validPassword)
+                label.contains(stringResource(id = R.string.phoneNumber), ignoreCase = true) ->
+                    stringResource(id = R.string.validPhoneNumber)
                 else -> ""
             }
             if (errorMessage.isNotEmpty()) {
@@ -197,8 +205,7 @@ fun TextField(
                     text = errorMessage,
                     color = colorResource(R.color.merkas),
                     fontSize = 12.sp,
-                    modifier = Modifier
-                        .padding(start = 16.dp, top = 4.dp)
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
                 )
             }
         }

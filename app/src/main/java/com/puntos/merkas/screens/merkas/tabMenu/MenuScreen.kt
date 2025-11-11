@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Hardware
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -32,10 +33,19 @@ import androidx.navigation.NavHostController
 import com.puntos.merkas.R
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
+import com.puntos.merkas.data.services.SessionService
+import com.puntos.merkas.data.services.TokenStore
 import com.puntos.merkas.screens.merkas.tabHome.HomeScreen
+import kotlinx.coroutines.launch
 
 @Composable
-fun MenuScreen(navController: NavHostController) {
+fun MenuScreen(
+    navController: NavHostController,
+    parentNavController: NavController,
+    tokenStore: TokenStore
+) {
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -70,8 +80,14 @@ fun MenuScreen(navController: NavHostController) {
         Spacer(Modifier.height(20.dp))
 
         ButtonAuth(
-            text = "Ir a INICIO",
-            onClick = { navController.navigate("home") },
+            text = "Cerrar Sesión",
+            onClick = {
+                scope.launch {
+                    SessionService.cerrarSesion(tokenStore)
+                    parentNavController.popBackStack(route = "home", inclusive = true)
+                    parentNavController.navigate("intro")
+                }
+            },
             style = ButtonAuthStyle.Login
         )
     }

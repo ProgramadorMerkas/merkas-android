@@ -2,21 +2,12 @@ package com.puntos.merkas.screens.auth.login
 
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,12 +16,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
@@ -40,27 +28,33 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puntos.merkas.R
 import com.puntos.merkas.auth.AuthViewModel
+import com.puntos.merkas.auth.AuthViewModelFactory
 import com.puntos.merkas.components.buttons.BackButton
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
 import com.puntos.merkas.components.inputs.ErrorType
 import com.puntos.merkas.components.inputs.TextField
-import com.puntos.merkas.data.services.LoginResult
-import com.puntos.merkas.services.TokenService
-import kotlinx.coroutines.launch
+import com.puntos.merkas.components.loaders.Loading
+import com.puntos.merkas.screens.merkas.tabHome.DatosUsuarioViewModel
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+
+// --- constantes (evita duplicación) ---
+private val EMAIL_REGEX = Regex("^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$")
+private val PASSWORD_REGEX = Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$")
 
 @Composable
-fun LoginScreen (
+fun LoginScreen(
     homeScreen: () -> Unit,
     navController: NavController,
-    viewModel: AuthViewModel = AuthViewModel()
+    datosUsuarioViewModel: DatosUsuarioViewModel
 ) {
-    // Estado del texto
+    // Estados UI
     var emailError by remember { mutableStateOf(false) }
     var emailErrorType by remember { mutableStateOf(ErrorType.NONE) }
 
@@ -71,51 +65,72 @@ fun LoginScreen (
     var contrasena by remember { mutableStateOf("") }
 
     var attemptedLogin by remember { mutableStateOf(false) }
+    var loginErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
 
-    // Foco del TextField
-    val focusManager = LocalFocusManager.current
+    // Context / ViewModel / focus
     val context = LocalContext.current
-    val resetPasswordUrl = "https://app.merkas.co/#/reset-password"
+    val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
+
+    val focusManager = LocalFocusManager.current
+    val resetPasswordUrl = "https://app.merkas.co/#/reset-password" // recomendable mover a strings.xml
     val forceShowError = attemptedLogin
 
-    val message by viewModel.message.collectAsState()
-    val loading = false
+    val mensaje by viewModel.message.collectAsState(initial = null)
 
-    Column(
+    // Manejo de respuestas del ViewModel
+    LaunchedEffect(mensaje) {
+        when {
+            mensaje?.contains("✅") == true -> {
+                isLoading = false
+                homeScreen()
+            }
+            mensaje?.contains("Email o contraseña incorrecto", ignoreCase = true) == true -> {
+                isLoading = false
+                loginErrorMessage = "Email o contraseña incorrecto"
+            }
+            mensaje != null -> {
+                // maneja otros mensajes / errores
+                isLoading = false
+                loginErrorMessage = mensaje
+            }
+        }
+    }
+
+    // ROOT Box para poder superponer el Loading
+    Box(
         modifier = Modifier
             .fillMaxSize()
+            // Detecta taps fuera para ocultar teclado sin interferir con clicks internos
+            .pointerInput(Unit) {
+                detectTapGestures { focusManager.clearFocus() }
+            }
             .padding(horizontal = 32.dp, vertical = 50.dp)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) { focusManager.clearFocus() },
-        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 15.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // BOTÓN ATRÁS
-            BackButton(navController)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // TEXTO INICIAR SESIÓN
-            Text(
-                stringResource(id = R.string.login),
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = colorResource(id = R.color.title)
-            )
-        }
-
+            // HEADER
             Column(
-                Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 15.dp)
             ) {
-                // CAMPO EMAIL
+                BackButton(navController) // asegúrate que BackButton tiene contentDescription si es necesario
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    stringResource(id = R.string.login),
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = colorResource(id = R.color.title)
+                )
+            }
+
+            // FORM
+            Column(modifier = Modifier.fillMaxSize()) {
+                // EMAIL
                 TextField(
                     label = stringResource(id = R.string.email),
                     value = correo,
@@ -132,17 +147,17 @@ fun LoginScreen (
                                 emailError = true
                                 emailErrorType = ErrorType.REQUIRED
                             }
-                            !correo.matches(Regex("[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}")) -> {
+                            !correo.matches(EMAIL_REGEX) -> {
                                 emailError = true
                                 emailErrorType = ErrorType.INVALID_FORMAT
                             }
                         }
                     },
                     placeholder = stringResource(id = R.string.emailExample) + "@correo.com",
-                    forceShowError = forceShowError // MOSTRAR ERROR SI NO SE HA EJECUTADO HASBEENFOCUSED ANTERIORMENTE
+                    forceShowError = forceShowError
                 )
 
-                // CAMPO CONTRASEÑA
+                // PASSWORD
                 TextField(
                     label = stringResource(id = R.string.password),
                     imeAction = ImeAction.Done,
@@ -151,6 +166,7 @@ fun LoginScreen (
                         contrasena = it
                         passwordError = false
                         passwordErrorType = ErrorType.NONE
+                        loginErrorMessage = null
                     },
                     isError = passwordError,
                     errorType = passwordErrorType,
@@ -160,9 +176,7 @@ fun LoginScreen (
                                 passwordError = true
                                 passwordErrorType = ErrorType.REQUIRED
                             }
-                            !contrasena.matches(
-                                Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$")
-                            ) -> {
+                            !contrasena.matches(PASSWORD_REGEX) -> {
                                 passwordError = true
                                 passwordErrorType = ErrorType.INVALID_FORMAT
                             }
@@ -170,10 +184,11 @@ fun LoginScreen (
                     },
                     placeholder = "",
                     isPassword = true,
-                    forceShowError = forceShowError // MOSTRAR ERROR SI NO SE HA EJECUTADO HASBEENFOCUSED ANTERIORMENTE
+                    forceShowError = forceShowError,
+                    externalErrorMessage = loginErrorMessage
                 )
 
-                // LINK OLVIDÉ MI CONTRASEÑA
+                // FORGOT LINK
                 TextButton(
                     onClick = {
                         val customTabsIntent = CustomTabsIntent.Builder()
@@ -193,105 +208,53 @@ fun LoginScreen (
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // BOTÓN LOGIN
+                // BUTTON LOGIN
                 ButtonAuth(
                     text = stringResource(R.string.login),
                     style = ButtonAuthStyle.Login,
+                    // Deshabilitar si ya estamos cargando para evitar reenvíos
+                    enabled = !isLoading,
                     onClick = {
+                        // Previene doble click
+                        if (isLoading) return@ButtonAuth
+
+                        focusManager.clearFocus()
                         Log.d("Login", "Botón Iniciar presionado")
-                        // Validación manual antes de enviar
                         attemptedLogin = true
 
-                        val validEmail = correo.matches(Regex(
-                            "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"))
-
-                        if (!validEmail) {
-                            emailError = true
-                            emailErrorType = ErrorType.INVALID_FORMAT
-                        }
-
-
+                        val validEmail = correo.matches(EMAIL_REGEX)
                         val passwordValid = contrasena.isNotBlank()
 
-                        // Si hay errores, los marcamos
                         emailError = !validEmail
                         passwordError = !passwordValid
                         emailErrorType = if (!validEmail) ErrorType.INVALID_FORMAT else ErrorType.NONE
                         passwordErrorType = if (!passwordValid) ErrorType.REQUIRED else ErrorType.NONE
 
-                        // Si algo es inválido, salimos
                         if (!validEmail || !passwordValid) return@ButtonAuth
 
-                        // ✅ AQUÍ sí llamamos al ViewModel **solamente una vez**
-                        viewModel.login(correo, contrasena)
+                        loginErrorMessage = null
+                        isLoading = true
 
-                        /* if (validEmail) {
-                             Log.d("Login", "Datos válidos, ejecutando loginViewModel.login()")
-                             viewModel.login(email, password)
-                         } else {
-                             Log.d("Login", "Errores detectados")
-                         }
+                        viewModel.clearMessage()
 
-                          var valid = true
-
-                         if (email.isBlank()) {
-                             emailError = true
-                             emailErrorType = ErrorType.REQUIRED
-                             valid = false
-                         } else if (!email.matches(
-                                 Regex(
-                                     "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
-                                 )
-                             )
-                         ) {
-                             emailError = true
-                             emailErrorType = ErrorType.INVALID_FORMAT
-                             valid = false
-                         }
-
-                         if (password.isBlank()) {
-                             passwordError = true
-                             passwordErrorType = ErrorType.REQUIRED
-                             valid = false
-                         } else if (!password.matches(
-                                 Regex(
-                                     "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#\$%^&*(),.?\":{}|<>]).{8,}$"
-                                 )
-                             )
-                         ) {
-                             passwordError = true
-                             passwordErrorType = ErrorType.INVALID_FORMAT
-                             valid = false
-                         }
-
-                         if (valid) {
-                             viewModel.login(email, password)
-                         }*/
+                        // Ejecuta login; ViewModel debe emitir mensaje/estado y LaunchedEffect lo gestionará
+                        viewModel.login(
+                            correo = correo,
+                            contrasena = contrasena,
+                            datosUsuarioViewModel = datosUsuarioViewModel
+                        )
                     }
                 )
-/*
-                    Box(Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(28.dp), color = colorResource(R.color.merkas))
-                }
- */
-                    /* when (loginState) {
-                        is LoginResult.Success -> {
-                            LaunchedEffect(Unit) {
-                                homeScreen()
-                                viewModel.resetState()
-                            }
-                        }
-                        is LoginResult.Failure -> {
-                            val message = (loginState as LoginResult.Failure).message
-                            Text(
-                                message,
-                                color = colorResource(R.color.merkas),
-                                modifier = Modifier.padding(top = 16.dp)
-                            )
-                        }
-                        null -> {}
-                    } */
             }
+        }
+
+        // Overlay de carga: animado (opcional)
+        AnimatedVisibility(
+            visible = isLoading,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Loading(message = "Iniciando sesión...")
+        }
     }
 }
