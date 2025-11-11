@@ -17,6 +17,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -40,6 +44,8 @@ fun OffersItem(
     isLoading: Boolean
 ) {
 
+    var lastClickTime by remember { mutableStateOf(0L) }
+
     if (isLoading) {
         SkeletonOfferItem()
         return
@@ -47,7 +53,11 @@ fun OffersItem(
 
     Button(
         onClick = {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastClickTime > 1000) {
+                lastClickTime = currentTime
             navController.navigate("ecommerce")
+            }
         },
         modifier = Modifier
             .padding(top = 10.dp)
