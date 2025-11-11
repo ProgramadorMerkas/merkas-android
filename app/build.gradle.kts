@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.puntos.merkas"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.puntos.merkas"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = 24
+        targetSdk = 35
         versionCode = 20251106
         versionName = "20251106.1"
 
@@ -63,11 +63,12 @@ android {
         jvmTarget = "1.8"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
-    /*composeOptions {
+    composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
-    }*/
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
