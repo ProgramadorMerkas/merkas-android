@@ -2,7 +2,7 @@
 accompanistNavigationAnimation = "0.34.0"
 accompanistNavigationAnimationVersion = "<última-versión>"
 agp = "8.6.1"
-androidSdk = "11.3.0"
+androidSdk = "11.5.0"
 browser = "1.8.0"
 coilCompose = "2.6.0"
 converterGson = "2.11.0"

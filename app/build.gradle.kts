@@ -14,8 +14,8 @@ android {
         applicationId = "com.puntos.merkas"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20251106
-        versionName = "20251106.1"
+        versionCode = 20251112
+        versionName = "20251112.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -102,9 +102,7 @@ dependencies {
     implementation(libs.play.services.maps)
 
     // MapLibre
-    implementation(libs.android.sdk)
-
-    // --- Retrofit & Gson ---
+    implementation("org.maplibre.gl:android-sdk:11.5.0")
 
     // --- OkHttp (para peticiones HTTP y logs) ---
     implementation(libs.okhttp)
