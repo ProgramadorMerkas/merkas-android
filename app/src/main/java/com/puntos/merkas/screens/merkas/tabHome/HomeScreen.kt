@@ -63,6 +63,7 @@ import com.puntos.merkas.data.services.AlliesViewModel
 import com.puntos.merkas.data.services.OffersViewModel
 import com.puntos.merkas.data.services.TokenService
 import com.puntos.merkas.data.services.TokenStore
+import com.puntos.merkas.screens.merkas.tabAllies.AlliesMapPreview
 import com.puntos.merkas.screens.merkas.tabAllies.MapLibreView
 
 @SuppressLint("ContextCastToActivity")
@@ -357,9 +358,9 @@ fun HomeScreen(
                     contentAlignment = Alignment.BottomEnd
                 ) {
 
-                    MapLibreView(
-                        Modifier
-                            .fillMaxSize(),
+                    AlliesMapPreview(
+                        modifier = Modifier.fillMaxSize(),
+                        viewModel = alliesViewModel,
                         apiKey = "pJD8cJKKgMxqpoeJulK5"
                     )
 

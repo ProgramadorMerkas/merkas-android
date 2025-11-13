@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -62,22 +63,16 @@ fun AlliesScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
-    val tokenStore = remember { TokenStore(context) }
     val activity = context as? Activity
+    val tokenStore = remember { TokenStore(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Estado del ViewModel
     val allies by viewModel.allies.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    // Cargar aliados al entrar
-    LaunchedEffect(Unit) {
-        viewModel.loadAllies(token, tokenStore)
-    }
-
+    var showPermissionDialog by remember { mutableStateOf(false) }
     var hasPermission by remember { mutableStateOf(false) }
-    var canAskAgain by remember { mutableStateOf(true) }
-
     // Recordar si ya intentamos solicitar el permiso para no repetir en recomposición
     var permissionRequested by rememberSaveable { mutableStateOf(false) }
 
@@ -87,19 +82,26 @@ fun AlliesScreen(
 
     // Función para actualizar el estado actual de los permisos
     fun refreshPermissionState() {
-        hasPermission =
-            ContextCompat.checkSelfPermission(
+        hasPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
+    }
 
-        canAskAgain =
-            activity?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(
-                    it,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-            } ?: true
+    // Cargar aliados al entrar
+    LaunchedEffect(Unit) {
+        viewModel.loadAllies(token, tokenStore)
+    }
+
+    LaunchedEffect(Unit) {
+        refreshPermissionState()
+        // Mostrar diálogo automáticamente si no hay permisos
+        if (!hasPermission && !permissionRequested) {
+            delay(400) // leve delay para evitar parpadeos al abrir
+            showPermissionDialog = true
+        }
+        // Cargar aliados del backend
+        viewModel.loadAllies(token, tokenStore)
     }
 
     // Sincroniza los permisos al entrar en la pantalla o volver del background
@@ -110,38 +112,18 @@ fun AlliesScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // Launcher para solicitar ambos permisos
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
+        permissionRequested = true
         hasPermission = permissions.values.any { it }
         refreshPermissionState()
-        permissionRequested = true
         if (!hasPermission) {
-            Toast.makeText(
-                context,
-                "Permiso denegado. Mostrando mapa general",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
-    // Pedimos permiso si no está concedido. Ejecuta la solicitud solo una vez y tras un breve retardo para evitar el bug
-    LaunchedEffect(Unit) {
-        delay(300)
-        refreshPermissionState()
-        if (!hasPermission && !permissionRequested) {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
+            Toast.makeText(context, "Permiso denegado. Mostrando mapa general.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -155,47 +137,43 @@ fun AlliesScreen(
         MapLibreView(
             modifier = Modifier.fillMaxSize(),
             apiKey = "pJD8cJKKgMxqpoeJulK5",
-            onMapReady = { view ->
-                view.getMapAsync { map ->
-                    mapRef = map
-                    map.getStyle { style ->
-                        styleLoaded = true
-                    }
+            onMapReady = { map ->
+                mapRef = map
+                map.getStyle { styleLoaded = true }
 
-                    // Manejo de cámara según permisos
-                    if (hasPermission) {
-                        map.getStyle { style ->
-                            try {
-                                val locationComponent = map.locationComponent
-                                if (!locationComponent.isLocationComponentActivated) {
-                                    val options = LocationComponentActivationOptions.builder(
-                                        context,
-                                        style
-                                    ).build()
-                                    locationComponent.activateLocationComponent(options)
-                                }
-                                locationComponent.isLocationComponentEnabled = true
-                                locationComponent.lastKnownLocation?.let {
-                                    val position = CameraPosition.Builder()
-                                        .target(LatLng(it.latitude, it.longitude))
-                                        .zoom(14.0)
-                                        .build()
-                                    map.animateCamera(
-                                        CameraUpdateFactory.newCameraPosition(position)
-                                    )
-                                }
-                            } catch (e: SecurityException) {
-                                e.printStackTrace()
+                // Manejo de cámara según permisos
+                if (hasPermission) {
+                    map.getStyle { style ->
+                        try {
+                            val locationComponent = map.locationComponent
+                            if (!locationComponent.isLocationComponentActivated) {
+                                val options = LocationComponentActivationOptions.builder(
+                                    context,
+                                    style
+                                ).build()
+                                locationComponent.activateLocationComponent(options)
                             }
+                            locationComponent.isLocationComponentEnabled = true
+                            locationComponent.lastKnownLocation?.let {
+                                val position = CameraPosition.Builder()
+                                    .target(LatLng(it.latitude, it.longitude))
+                                    .zoom(14.0)
+                                    .build()
+                                map.animateCamera(
+                                    CameraUpdateFactory.newCameraPosition(position)
+                                )
+                            }
+                        } catch (e: SecurityException) {
+                            e.printStackTrace()
                         }
-                    } else {
-                        val bogota = LatLng(4.7110, -74.0721)
-                        val position = CameraPosition.Builder()
-                            .target(bogota)
-                            .zoom(11.5)
-                            .build()
-                        map.animateCamera(CameraUpdateFactory.newCameraPosition(position))
                     }
+                } else {
+                    val bogota = LatLng(4.7110, -74.0721)
+                    val position = CameraPosition.Builder()
+                        .target(bogota)
+                        .zoom(11.5)
+                        .build()
+                    map.animateCamera(CameraUpdateFactory.newCameraPosition(position))
                 }
             }
         )
@@ -240,37 +218,44 @@ fun AlliesScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "Mostrando mapa general", color = Color.Gray)
                     Button(
-                        onClick = {
-                            if (canAskAgain) {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    )
-                                )
-                            } else {
-                                try {
-                                    val intent = Intent(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        Uri.fromParts("package", context.packageName, null)
-                                    ).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                    Toast.makeText(context, "No se pudo abrir Ajustes", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
+                        onClick = { showPermissionDialog = true },
                         modifier = Modifier.padding(top = 6.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.merkas)
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.merkas))
                     ) {
                         Text("Permitir ubicación")
                     }
                 }
             }
+        }
+
+        if (showPermissionDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showPermissionDialog = false },
+                title = { Text("Permiso de ubicación") },
+                text = {
+                    Text(
+                        "Merkas necesita acceder a tu ubicación para mostrarte los aliados más cercanos " +
+                                "mientras usas la app. No se usa en segundo plano ni se comparte con terceros."
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        showPermissionDialog = false
+                        permissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                    ) { Text("Aceptar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPermissionDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
