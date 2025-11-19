@@ -128,6 +128,7 @@ dependencies {
     implementation (libs.kotlinx.coroutines.android.v173)
 
     implementation(libs.coil.compose)
+    implementation(libs.play.services.location)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

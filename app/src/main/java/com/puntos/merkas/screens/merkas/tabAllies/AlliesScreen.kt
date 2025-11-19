@@ -2,11 +2,8 @@ package com.puntos.merkas.screens.merkas.tabAllies
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
+import android.app.Application
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,21 +35,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.puntos.merkas.R
+import com.puntos.merkas.data.services.AlliesViewModel
+import com.puntos.merkas.data.services.TokenStore
+import com.puntos.merkas.location.LocationViewModel
+import com.puntos.merkas.location.LocationViewModelFactory
 import kotlinx.coroutines.delay
+import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
-import androidx.navigation.NavController
-import com.puntos.merkas.data.services.AlliesProps
-import com.puntos.merkas.data.services.AlliesViewModel
-import com.puntos.merkas.data.services.TokenStore
-import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.maps.MapLibreMap
 
@@ -67,6 +65,11 @@ fun AlliesScreen(
     val tokenStore = remember { TokenStore(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    val app = (context.applicationContext as Application)
+    val locationViewModel: LocationViewModel = viewModel(
+        factory = LocationViewModelFactory(app)
+    )
+
     // Estado del ViewModel
     val allies by viewModel.allies.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -79,6 +82,8 @@ fun AlliesScreen(
     // Referencias para reactividad del mapa
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
+
+    var initialLocationRequestedForMap by rememberSaveable { mutableStateOf(false) }
 
     // Función para actualizar el estado actual de los permisos
     fun refreshPermissionState() {
@@ -107,8 +112,18 @@ fun AlliesScreen(
     // Sincroniza los permisos al entrar en la pantalla o volver del background
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                refreshPermissionState()
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    refreshPermissionState()
+                }
+                Lifecycle.Event.ON_PAUSE,
+                Lifecycle.Event.ON_STOP -> {
+                    try {
+                        // Apagar el componente de ubicación al salir de la pantalla
+                        mapRef?.locationComponent?.isLocationComponentEnabled = false
+                    } catch (_: Exception) { }
+                }
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -124,6 +139,27 @@ fun AlliesScreen(
         refreshPermissionState()
         if (!hasPermission) {
             Toast.makeText(context, "Permiso denegado. Mostrando mapa general.", Toast.LENGTH_SHORT).show()
+        } else {
+            locationViewModel.loadLastLocationOnce()
+        }
+    }
+
+    // Observa la ubicación one-time desde el ViewModel
+    val lastLocation by locationViewModel.lastLocation.collectAsState()
+
+    // Cuando el LastLocation cambia y el mapa está listo, animar la cámara
+    LaunchedEffect(lastLocation ,mapRef, styleLoaded) {
+        val map = mapRef ?: return@LaunchedEffect
+        if (!styleLoaded) return@LaunchedEffect
+        val loc = lastLocation ?: return@LaunchedEffect
+        try {
+            val position = CameraPosition.Builder()
+                .target(LatLng(loc.latitude, loc.longitude))
+                .zoom(14.0)
+                .build()
+            map.animateCamera(CameraUpdateFactory.newCameraPosition(position))
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -153,16 +189,16 @@ fun AlliesScreen(
                                 ).build()
                                 locationComponent.activateLocationComponent(options)
                             }
+
                             locationComponent.isLocationComponentEnabled = true
-                            locationComponent.lastKnownLocation?.let {
-                                val position = CameraPosition.Builder()
-                                    .target(LatLng(it.latitude, it.longitude))
-                                    .zoom(14.0)
-                                    .build()
-                                map.animateCamera(
-                                    CameraUpdateFactory.newCameraPosition(position)
-                                )
+
+                            // Si aún no pedimos la ubicación one-time para centrar mapa, pedimos ahora.
+                            if (!initialLocationRequestedForMap) {
+                                initialLocationRequestedForMap = true
+                                // Pedimos al LocationViewModel que haga una única lectura puntual
+                                locationViewModel.loadLastLocationOnce()
                             }
+
                         } catch (e: SecurityException) {
                             e.printStackTrace()
                         }
@@ -202,28 +238,35 @@ fun AlliesScreen(
             } catch (_: Exception) { }
         }
 
-        // UI sin permisos
-        AnimatedVisibility(
-            visible = !hasPermission,
-            enter = fadeIn(),
-            exit = fadeOut()
+        // UI superior (permiso + botón actualizar)
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Mostrando mapa general", color = Color.Gray)
-                    Button(
-                        onClick = { showPermissionDialog = true },
-                        modifier = Modifier.padding(top = 6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.merkas))
-                    ) {
-                        Text("Permitir ubicación")
-                    }
+            if (!hasPermission) {
+                Text(text = "Mostrando mapa general", color = Color.Gray)
+                Button(
+                    onClick = { showPermissionDialog = true },
+                    modifier = Modifier.padding(top = 6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.merkas))
+                ) {
+                    Text("Permitir ubicación")
+                }
+            } else {
+                // Botón para que el usuario decida actualizar su ubicación (one-time)
+                Button(
+                    onClick = {
+                        // Forzar nueva lectura y centrar el mapa cuando llegue
+                        locationViewModel.resetAndReload()
+                    },
+                    modifier = Modifier.padding(top = 6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.merkas))
+                ) {
+                    Text("Actualizar mi ubicación")
                 }
             }
         }
@@ -234,8 +277,8 @@ fun AlliesScreen(
                 title = { Text("Permiso de ubicación") },
                 text = {
                     Text(
-                        "Merkas necesita acceder a tu ubicación para mostrarte los aliados más cercanos " +
-                                "mientras usas la app. No se usa en segundo plano ni se comparte con terceros."
+                        "Merkas necesita acceder a tu ubicación para mostrar tu posición en el mapa " +
+                                "y los aliados más cercanos, solo mientras la app está en uso."
                     )
                 },
                 confirmButton = {
