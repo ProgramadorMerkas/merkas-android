@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.puntos.merkas.R
+import com.puntosmerkas.co.R
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">merkas_kotlin</string>
+    <string name="app_name">Puntos Merkas</string>
 
     <!-- INTROscreen -->
     <string name="welcome_phrase">Merkas, Colombia\'s largest benefits platform, welcomes you!</string>

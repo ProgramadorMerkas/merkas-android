@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.puntos.merkas.R
+import com.puntosmerkas.co.R
 import com.puntos.merkas.auth.AuthViewModel
 import com.puntos.merkas.auth.AuthViewModelFactory
 import com.puntos.merkas.components.buttons.BackButton

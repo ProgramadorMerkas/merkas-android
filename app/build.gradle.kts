@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "com.puntos.merkas"
+    namespace = "com.puntosmerkas.co"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.puntos.merkas"
+        applicationId = "com.puntosmerkas.co"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20251112
-        versionName = "20251112.1"
+        versionCode = 20251126
+        versionName = "20251126.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

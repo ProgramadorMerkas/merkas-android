@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.puntos.merkas.R
+import com.puntosmerkas.co.R
 
 enum class ButtonAuthStyle {
     Login,

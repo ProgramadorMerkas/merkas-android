@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.puntos.merkas.R
+import com.puntosmerkas.co.R
 
 data class PasswordValidationState(
     val hasMinLength: Boolean = false,

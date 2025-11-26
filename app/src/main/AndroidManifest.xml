@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
-        android:name=".MerkasApp"
+        android:name="com.puntos.merkas.MerkasApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -19,7 +19,7 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="33">
         <activity
-            android:name=".MainActivity"
+            android:name="com.puntos.merkas.MainActivity"
             android:exported="true"
             android:launchMode="standard"
             android:theme="@style/Theme.Merkas_kotlin"

@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import com.puntos.merkas.R
+import com.puntosmerkas.co.R
 import com.puntos.merkas.components.buttons.ButtonAuth
 import com.puntos.merkas.components.buttons.ButtonAuthStyle
 import com.puntos.merkas.screens.merkas.tabHome.HomeScreen
